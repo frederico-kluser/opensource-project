@@ -1,0 +1,67 @@
+# =============================================================================
+# Release (semantic-release) — {{PROJECT_NAME}} ({{OWNER}}/{{REPO}})
+#
+# NOTA (para o agente): fixe as actions por SHA com `bash scripts/oss-pin-actions.sh`
+# antes do primeiro push (owner/repo@<PIN_SHA> # vX.Y.Z).
+#
+# ALTERNATIVA ao release-please: use APENAS UM dos dois mecanismos de release.
+# Este workflow corre após merge em {{DEFAULT_BRANCH}} (e canais pré-release) e
+# publica via `npx semantic-release` (config em .releaserc.json).
+#
+# Permissões: mínimo global (contents: read) com elevação pontual só no job de
+# release. Os tokens de PUBLICAÇÃO (NPM_TOKEN) vivem no environment `production`
+# (com aprovação manual), nunca em secrets ao nível do repositório.
+# =============================================================================
+
+name: Release (semantic-release)
+
+on:
+  push:
+    branches:
+      - "{{DEFAULT_BRANCH}}"
+      - "next"
+      - "beta"
+      - "alpha"
+
+permissions:
+  contents: read
+
+# Nunca cancelar uma release em curso; uma release de cada vez por ramo.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: semantic-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Elevação pontual: criar tags/releases e comentar issues/PRs exigem escrita.
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    environment: production   # aprovação manual + segredos de publicação
+    steps:
+      - name: Checkout
+        uses: actions/checkout@<PIN_SHA> # v4.2.2
+        with:
+          fetch-depth: 0          # histórico completo: o semantic-release analisa commits e tags
+          persist-credentials: true
+
+      - name: Set up toolchain
+        uses: actions/setup-node@<PIN_SHA> # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies (locked)
+        run: npm ci
+
+      - name: Release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
