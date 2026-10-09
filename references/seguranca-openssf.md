@@ -1,10 +1,9 @@
 # Segurança defensiva e OpenSSF Scorecard
 
-A postura defensiva de um projeto open-source é medida, auditada e tornada
-pública. Esta referência cobre o Scorecard do OpenSSF, menor privilégio em
-workflows, fixação de dependências, fluxos perigosos e proteção de segredos.
-`scripts/oss-doctor.sh` mostra o estado (leitura), `scripts/oss-pin-actions.sh`
-fixa actions por SHA e `scripts/oss-gate.sh push|pr|release` aplica os gates.
+A postura defensiva é medida, auditada e tornada pública. Esta referência cobre
+o Scorecard do OpenSSF, menor privilégio em workflows, fixação de dependências,
+fluxos perigosos e proteção de segredos. `scripts/oss-doctor.sh` diagnostica,
+`scripts/oss-pin-actions.sh` fixa actions e `scripts/oss-gate.sh` aplica os gates.
 
 ## O que é o OpenSSF Scorecard
 
@@ -16,8 +15,7 @@ fixa actions por SHA e `scripts/oss-gate.sh push|pr|release` aplica os gates.
 
 ## Como obter a nota
 
-- Badge da API pública no README (sintaxe em `references/identidade-e-telemetria.md`):
-  `https://api.securityscorecards.dev/projects/github.com/OWNER/REPO/badge`.
+- Badge da API pública: `https://api.securityscorecards.dev/projects/github.com/OWNER/REPO/badge` (sintaxe em `references/identidade-e-telemetria.md`).
 - Consulta programática:
 
 ```bash
@@ -27,8 +25,7 @@ curl -sS "https://api.securityscorecards.dev/projects/github.com/OWNER/REPO" | j
 - Scorecard Action fixada por SHA (publica resultados e permite exportar SARIF):
 
 ```yaml
-# .github/workflows/scorecard.yml
-name: scorecard
+# .github/workflows/scorecard.yml (template em assets/workflows/scorecard.yml)
 on:
   schedule: [{ cron: "0 6 * * 1" }]
   push: { branches: [main] }
@@ -43,7 +40,6 @@ jobs:
       - uses: ossf/scorecard-action@<SHA> # v2.x — fixado por scripts/oss-pin-actions.sh
         with:
           results_file: results.sarif
-          results_format: sarif
           publish_results: true
 ```
 
@@ -99,9 +95,8 @@ jobs:
 
 ## Fixação de dependências por hash SHA
 
-- **Porquê**: tags como `@v4` são móveis — quem detém a action pode reescrevê-las
-  e todos os consumidores correm o novo código. O commit SHA de 40 hex é prova
-  matemática do código exato que corre.
+- **Porquê**: tags como `@v4` são móveis e podem ser reescritas por quem detém a
+  action; o commit SHA de 40 hex é prova matemática do código exato que corre.
 - **Formato**: `owner/repo@<sha40> # v4` — o comentário preserva a versão e a
   legibilidade para upgrades futuros.
 - **Ferramenta desta skill** (idempotente, só reescreve o que falta):
@@ -111,16 +106,16 @@ bash scripts/oss-pin-actions.sh          # converte em .github/workflows/ (--che
 # owner/repo@v4 → owner/repo@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 ```
 
-- Vale também para imagens de container (`image@sha256:...`) e lockfiles com
-  integridade (`package-lock.json`, `go.sum`, `Cargo.lock`).
-- `scripts/oss-gate.sh pr` falha se algum `uses:` vier sem SHA fixado.
+- Vale também para imagens de container (`image@sha256:...`) e lockfiles (`package-lock.json`, `go.sum`, `Cargo.lock`).
+- `scripts/oss-pin-actions.sh --check` e `scripts/oss-doctor.sh` acusam qualquer
+  `uses:` que ainda venha por tag móvel.
 
 ## Fluxos perigosos: padrões proibidos
 
 `pull_request_target` corre com os segredos e o `GITHUB_TOKEN` privilegiado do
 repositório base. Se o workflow também correr código do PR (checkout do head,
-build, testes, `npm install`), o atacante controla o código que executa com
-privilégios: exfiltra segredos, publica releases, altera branches.
+build, `npm install`), o atacante controla o código que corre com privilégios:
+exfiltra segredos, publica releases, altera branches.
 
 Padrões proibidos — rejeitar sempre em revisão:
 
@@ -133,8 +128,8 @@ Padrões proibidos — rejeitar sempre em revisão:
 4. Self-hosted runners públicos a correr workflows de forks.
 5. `pull_request` com `permissions: write-all` ou secrets disponíveis a forks.
 
-Alternativa segura: testar PRs com `pull_request` (sem segredos) e usar
-`pull_request_target` apenas para labels/comentários, sem executar código do PR.
+Alternativa segura: testar PRs em `pull_request` (sem segredos) e reservar
+`pull_request_target` apenas a labels/comentários, sem executar código do PR.
 
 ## Secret Scanning + Push Protection
 
@@ -148,11 +143,11 @@ gh api -X PUT repos/OWNER/REPO/secret-scanning/push-protection -f enabled=true
 ```
 
 - Varredura local ANTES do push: `scripts/oss-gate.sh push` corre heurísticas
-  (chaves `AKIA`/`ghp_`/`sk-`, `BEGIN PRIVATE KEY`, `password=`/`token=` em
-  claro, URLs com credenciais) e bloqueia o push com exit code ≠ 0.
+  (padrões `AKIA*`, `gh[pousr]_*`, `github_pat_*`, `glpat-*`, `npm_*` e
+  `BEGIN PRIVATE KEY`) e bloqueia o push com exit code ≠ 0.
 - Complementos: `gitleaks detect --source . --redact`; `.gitignore` com `.env`,
   `.env.*`, `*.pem`, `id_rsa*`, `.secrets`; Dependabot para alertas de CVE.
-- Regra dura: um segredo que chegou ao git está comprometido. Rotar/revogar
+- Regra dura: segredo que chegou ao git está comprometido — rotar/revogar
   PRIMEIRO, depois limpar o histórico (`git filter-repo`) e só então divulgar.
 
 ## Divulgação coordenada
@@ -161,7 +156,8 @@ gh api -X PUT repos/OWNER/REPO/secret-scanning/push-protection -f enabled=true
   `references/governanca-social.md`.
 - Registe o advisory no repo (GHSA) e peça CVE; divulgue em conjunto com quem
   reportou, dentro do prazo negociado; nunca culpe o reporter.
-- `scripts/oss-gate.sh release` exige `SECURITY.md` válido e nota Scorecard ≥ 7.0.
+- `scripts/oss-doctor.sh` audita o badge Scorecard e o Push Protection;
+  `scripts/oss-gate.sh publish` exige varredura de segredos limpa e `--yes`.
 
 ## Checklist final do agente
 
