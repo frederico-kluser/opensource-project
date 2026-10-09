@@ -121,10 +121,51 @@ grep -rq 'pull_request_target' .github/workflows 2>/dev/null \
   || true
 
 head_ "Identidade e telemetria"
-grep -q 'img.shields.io\|badgen.net' README.md 2>/dev/null \
+grep -q 'img.shields.io\|badgen.net\|badge.svg' README.md 2>/dev/null \
   && ok "badges de telemetria no README" || warn "README sem badges (build, licença, versão, OpenSSF)"
-grep -q 'securityscorecards.dev' README.md 2>/dev/null \
-  && ok "badge OpenSSF Scorecard presente" || warn "sem badge OpenSSF Scorecard (limiar de graduação ≥ 7)"
+
+head_ "Telemetria (badges)"
+if [ "$LOCAL_ONLY" -eq 1 ]; then
+  info "modo --local: verificação HTTP dos badges omitida"
+elif ! command -v curl >/dev/null 2>&1; then
+  info "curl indisponível: verificação HTTP dos badges omitida"
+else
+  mapfile -t BADGES < <(grep -oE 'https://[^) ]+' README.md 2>/dev/null \
+    | grep -E 'badge\.svg|img\.shields\.io|shields\.io/|api\.securityscorecards\.dev' | sort -u)
+  if [ "${#BADGES[@]}" -eq 0 ]; then
+    warn "sem URLs de badge no README — sem telemetria pública"
+  else
+    for u in "${BADGES[@]}"; do
+      code_type="$(curl -s -o /dev/null -w '%{http_code} %{content_type}' -L --max-time 15 "$u" 2>/dev/null)"
+      code="${code_type%% *}"
+      if [ "$code" = "200" ] && printf '%s' "$code_type" | grep -q 'image/'; then
+        ok "badge responde 200 (${code_type#* }) — $u"
+        # 200 não quer dizer badge bom: o shields devolve 200 com conteúdo de erro
+        rotulo="$(curl -sL --max-time 15 "$u" 2>/dev/null \
+          | grep -oE 'aria-label="[^"]*"|<title>[^<]*</title>' | head -1)"
+        if printf '%s' "$rotulo" | grep -qiE 'not found|no releases|invalid|inaccessible|unknown|no status'; then
+          warn "badge com estado de erro visível: ${rotulo} — $u"
+          info "Causas típicas: sem release ainda, repo privado, workflow sem runs ou alvo errado"
+          info "(references/identidade-e-telemetria.md — 'Quando os badges não aparecem')"
+        fi
+      else
+        bad "badge quebrado (HTTP ${code:-000}) — $u"
+        info "Solução: corrija ou remova o badge (um badge quebrado é pior que nenhum)"
+      fi
+      if printf '%s' "$u" | grep -q 'securityscorecards.dev'; then
+        score="$(curl -sL --max-time 15 "$u" 2>/dev/null \
+          | sed -n 's/.*<title>[^:]*: \([0-9][0-9.]*\)<\/title>.*/\1/p' | head -1)"
+        if [ -n "$score" ]; then
+          if awk -v s="$score" 'BEGIN{exit !(s+0>=7)}'; then
+            ok "OpenSSF Scorecard $score ≥ 7 (limiar de graduação do Gate 6)"
+          else
+            warn "OpenSSF Scorecard $score < 7 — abaixo do limiar (references/seguranca-openssf.md)"
+          fi
+        fi
+      fi
+    done
+  fi
+fi
 
 head_ "Estado remoto (GitHub)"
 if [ "$LOCAL_ONLY" -eq 1 ]; then
