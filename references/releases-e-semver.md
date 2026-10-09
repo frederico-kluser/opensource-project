@@ -91,8 +91,9 @@ Cada merge em `main` atualiza um **Release PR** vivo (ramo
 `release-please--branches--main`) que acumula CHANGELOG + bump; o humano revê e faz
 merge — e só esse merge dispara tag e publicação.
 
-- Config: `.github/release-please-config.json` (`release-type`, `packages`,
-  `bump-minor-pre-major`, regras de monorepo).
+- Config: `release-please-config.json` na raiz (`release-type`, `packages`,
+  `bump-minor-pre-major`, regras de monorepo) — alinhe os inputs `config-file`/
+  `manifest-file` do workflow com os caminhos reais (o scaffold planta-os na raiz).
 - Manifesto: `.release-please-manifest.json` — versão atual por pacote.
 - Workflow: `googleapis/release-please-action@v5` (nunca as `@v3` antigas).
 - Monorepo: tags `componente@v1.2.0` e changelog por pacote, escopo alinhado com os

@@ -5,28 +5,43 @@ pedido para o endpoint `POST /repos/{owner}/{repo}/rulesets` da REST API do GitH
 agente depois do primeiro push (os rulesets com `required_status_checks` bloqueiam o merge enquanto
 os checks ainda não existirem).
 
-Os nomes dos parâmetros seguem a API oficial de rulesets
-(`required_approving_review_count`, `require_code_owner_review`, `dismiss_stale_reviews_on_push`,
-`require_last_push_approval`, `allowed_merge_methods`, `required_status_checks` com
-`strict_required_status_checks` e, opcionalmente, `integration_id` por check). Os corpos em JSON
-não têm comentários — as explicações ficam aqui.
+Os nomes dos parâmetros seguem a API oficial de rulesets e foram **validados
+empiricamente** contra ela (`required_approving_review_count`, `require_code_owner_review`,
+`dismiss_stale_reviews_on_push`, `require_last_push_approval`,
+`require_extra_approval_for_unattributed_changes`, `required_review_thread_resolution`,
+`required_reviewers`, `allowed_merge_methods`, `required_status_checks` com
+`strict_required_status_checks_policy`, `do_not_enforce_on_create` e, opcionalmente,
+`integration_id` por check). Três regras duras:
+
+1. **Padrões são refs completas**: `refs/heads/...` para branches, `refs/tags/...` para
+   tags. Padrões soltos (`release/**`, `v*`, `main`) são rejeitados com
+   `422 Invalid target patterns` — os únicos tokens sem prefixo são `~ALL` e
+   `~DEFAULT_BRANCH`.
+2. **`parameters` tem de vir COMPLETO** (todas as chaves do objeto); um subconjunto
+   ou `parameters: {}` devolve `422 data matches no possible input`. Regras sem
+   parâmetros levam só `{ "type": "..." }`.
+3. **Nunca usar a chave `params`** (sem `-eters`): a API aceita-a e **ignora-a
+   silenciosamente** — o ruleset fica criado com valores por omissão. Confirme com
+   `gh api repos/{owner}/{repo}/rulesets/<id>` que os valores persistiram.
+
+Os corpos em JSON não têm comentários — as explicações ficam aqui.
 
 ## Ficheiros
 
 | Ficheiro              | Alvo           | O que impõe                                                                                          |
 | --------------------- | -------------- | ---------------------------------------------------------------------------------------------------- |
-| `regras-main.json`    | `branch`       | `~DEFAULT_BRANCH` e `release/**`: sem delete, sem force-push, PR com **2 aprovações**, code owner review, aprovações caducadas em push novo, `require_last_push_approval`, merge só por **squash**, status checks obrigatórios (strict). |
-| `regras-tags.json`    | `tag`          | Tags `v*` **imutáveis**: proibidos `update` e `deletion`.                                              |
-| `regras-release.json` | `branch`       | Ramos `release/**`: sem delete, sem force-push, PR com **1 aprovação**.                                |
+| `regras-main.json`    | `branch`       | `~DEFAULT_BRANCH` e `refs/heads/release/**`: sem delete, sem force-push, PR com **2 aprovações**, code owner review, aprovações caducadas em push novo, merge só por **squash**, status checks obrigatórios (strict). |
+| `regras-tags.json`    | `tag`          | Tags `refs/tags/v*` **imutáveis**: proibidos `update` e `deletion`.                                    |
+| `regras-release.json` | `branch`       | Ramos `refs/heads/release/**`: sem delete, sem force-push, PR com **1 aprovação**.                     |
 
 Notas:
 
 - `~DEFAULT_BRANCH` é um *placeholder do próprio GitHub* (resolvido para o ramo padrão do
   repositório) — **não** confundir com `{{DEFAULT_BRANCH}}` do scaffold.
-- Em `regras-main.json`, o contexto de status check `ci / build` é um **placeholder**: tem de ser
-  substituído pelo nome real do check tal como aparece no PR (formato `<workflow name> / <job name>`,
-  ex.: `CI / test`). Enquanto o contexto não existir, o GitHub mostra a check como *expected* e o
-  merge fica bloqueado.
+- Em `regras-main.json`, o contexto de status check `build` tem de ser o **nome do job**
+  tal como o GitHub o reporta (`gh api repos/{owner}/{repo}/commits/HEAD/check-runs
+  --jq '.check_runs[].name'`) — e não o par `workflow / job`. Enquanto o contexto não
+  existir, o GitHub mostra a check como *expected* e o merge fica bloqueado.
 - `integration_id` dentro de `required_status_checks[]` é **opcional**: use-o apenas para exigir o
   check de uma integração específica (GitHub App/Actions); para checks de workflows normais basta o
   `context`.
@@ -38,7 +53,7 @@ Notas:
 Com o `gh` CLI autenticado (`gh auth login`) e a partir desta pasta:
 
 ```bash
-# 1) Regra principal (ramo padrão + release/**) — aplicar PRIMEIRO
+# 1) Regra principal (ramo padrão + refs/heads/release/**) — aplicar PRIMEIRO
 gh api --method POST \
   repos/{{OWNER}}/{{REPO}}/rulesets \
   --input regras-main.json
@@ -48,7 +63,7 @@ gh api --method POST \
   repos/{{OWNER}}/{{REPO}}/rulesets \
   --input regras-release.json
 
-# 3) Imutabilidade das tags v*
+# 3) Imutabilidade das tags refs/tags/v*
 gh api --method POST \
   repos/{{OWNER}}/{{REPO}}/rulesets \
   --input regras-tags.json
@@ -83,7 +98,7 @@ remover, `DELETE .../rulesets/<id>`.
 ## Ordem recomendada
 
 1. **`regras-main.json`** — garante desde logo que nada entra em `{{DEFAULT_BRANCH}}` sem revisão.
-2. **`regras-release.json`** — protege os ramos de release antes de o primeiro `release/**` existir.
+2. **`regras-release.json`** — protege os ramos de release antes de o primeiro `refs/heads/release/**` existir.
 3. **`regras-tags.json`** — fecha a porta à reescrita de tags (aplicar **antes** do primeiro release).
 
 Se o projeto ainda não tem CI, aplique primeiro os rulesets sem `required_status_checks` e adicione a
