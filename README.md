@@ -1,11 +1,27 @@
 # opensource-project — agent skill de governança open-source de ciclo de vida total
 
-[![CI](https://github.com/frederico-kluser/opensource-project/actions/workflows/ci.yml/badge.svg)](https://github.com/frederico-kluser/opensource-project/actions/workflows/ci.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/frederico-kluser/opensource-project/badge)](https://securityscorecards.dev/viewer/?uri=github.com/frederico-kluser/opensource-project)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/frederico-kluser/opensource-project)](https://github.com/frederico-kluser/opensource-project/releases)
-![Conventional Commits](https://img.shields.io/badge/commits-Conventional-fe2d52.svg)
-![SemVer](https://img.shields.io/badge/version-SemVer-2ea44f.svg)
+<p align="center">
+  <a href="https://github.com/frederico-kluser/opensource-project/actions/workflows/ci.yml"><img src="https://github.com/frederico-kluser/opensource-project/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://securityscorecards.dev/viewer/?uri=github.com/frederico-kluser/opensource-project"><img src="https://api.securityscorecards.dev/projects/github.com/frederico-kluser/opensource-project/badge" alt="OpenSSF Scorecard"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://github.com/frederico-kluser/opensource-project/releases"><img src="https://img.shields.io/github/v/release/frederico-kluser/opensource-project" alt="GitHub release"></a>
+  <img src="https://img.shields.io/badge/commits-Conventional-fe2d52.svg" alt="Conventional Commits">
+  <img src="https://img.shields.io/badge/version-SemVer-2ea44f.svg" alt="SemVer">
+</p>
+
+**Telemetria — o que cada badge promete e mostra:**
+
+| Badge | O que mostra | Onde clicar |
+|---|---|---|
+| CI | estado do pipeline de testes (workflow `ci`, job `build`) em `main` | [runs do workflow](https://github.com/frederico-kluser/opensource-project/actions/workflows/ci.yml) |
+| OpenSSF Scorecard | nota de segurança defensiva (limiar de graduação **≥ 7**) | [relatório Scorecard](https://securityscorecards.dev/viewer/?uri=github.com/frederico-kluser/opensource-project) |
+| License | enquadramento legal (MIT) | [LICENSE](LICENSE) |
+| GitHub release | última versão SemVer publicada | [releases](https://github.com/frederico-kluser/opensource-project/releases) |
+| Conventional Commits · SemVer | contrato de mensagens e de versionamento | [SKILL.md](SKILL.md) |
+
+Os badges são **telemetria viva**: o `bash scripts/oss-doctor.sh` valida cada URL
+(HTTP 200 + `image/svg+xml`) e compara a nota do Scorecard com o limiar. Um badge
+quebrado é corrigido ou removido — nunca fica a fingir.
 
 Uma **agent skill** que faz de arquiteto de governança para agentes de código: cada
 pedido do utilizador — *commit, push, mudar a versão, fazer release, publicar* —

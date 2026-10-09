@@ -69,7 +69,8 @@ gh run list --workflow ci.yml --limit 10 --json displayTitle,conclusion,headBran
 ```
 
 Preferir `--json`/`--jq` a parsear tabelas coloridas; para leituras repetidas,
-`python3 scripts/gh-run.py` (da `github-agent-skill`) envolve o `gh` com saída estável.
+`python3 ~/.dsh/skills/github-agent-skill/scripts/gh-run.py` (wrapper da skill irmã
+`github-agent-skill`) envolve o `gh` com saída estável.
 
 ## Environments e publicação
 

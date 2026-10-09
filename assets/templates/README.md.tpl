@@ -1,12 +1,13 @@
 # {{PROJECT_NAME}}
 
-[![CI](https://github.com/{{OWNER}}/{{REPO}}/actions/workflows/ci.yml/badge.svg)](https://github.com/{{OWNER}}/{{REPO}}/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/{{OWNER}}/{{REPO}}/branch/{{DEFAULT_BRANCH}}/graph/badge.svg)](https://codecov.io/gh/{{OWNER}}/{{REPO}})
-[![License: {{LICENSE}}](https://img.shields.io/badge/license-{{LICENSE}}-blue.svg)](LICENSE)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/{{OWNER}}/{{REPO}}/badge)](https://securityscorecards.dev/viewer/?uri=github.com/{{OWNER}}/{{REPO}})
-[![npm version](https://img.shields.io/npm/v/{{REPO}}.svg)](https://www.npmjs.com/package/{{REPO}})
-[![PyPI version](https://img.shields.io/pypi/v/{{REPO}}.svg)](https://pypi.org/project/{{REPO}}/)
-[![GitHub release](https://img.shields.io/github/v/release/{{OWNER}}/{{REPO}})](https://github.com/{{OWNER}}/{{REPO}}/releases)
+<p align="center">
+  <a href="https://github.com/{{OWNER}}/{{REPO}}/actions/workflows/ci.yml"><img src="https://github.com/{{OWNER}}/{{REPO}}/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://securityscorecards.dev/viewer/?uri=github.com/{{OWNER}}/{{REPO}}"><img src="https://api.securityscorecards.dev/projects/github.com/{{OWNER}}/{{REPO}}/badge" alt="OpenSSF Scorecard"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-{{LICENSE}}-blue.svg" alt="License: {{LICENSE}}"></a>
+  <a href="https://github.com/{{OWNER}}/{{REPO}}/releases"><img src="https://img.shields.io/github/v/release/{{OWNER}}/{{REPO}}" alt="GitHub release"></a>
+  <a href="https://www.npmjs.com/package/{{REPO}}"><img src="https://img.shields.io/npm/v/{{REPO}}.svg" alt="npm version"></a>
+  <a href="https://pypi.org/project/{{REPO}}/"><img src="https://img.shields.io/pypi/v/{{REPO}}.svg" alt="PyPI version"></a>
+</p>
 
 {{DESCRIPTION}}
 

@@ -27,6 +27,8 @@ plataforma que as tornam invioláveis.
 - "muda/aumenta/sobe a versão", "faz release", "publica o pacote", "gera o changelog".
 - "cria/prepara um projeto open-source", "põe este repo em condições de open-source".
 - "configura branch protection/rulesets", "protege a main", "CODEOWNERS", "OpenSSF".
+- "automações do GitHub Actions", "pipeline de testes", "CI/CD", "workflow", "matrix",
+  "cache/artifacts", "reusable workflows", "CodeQL", "dependabot", "agendamentos".
 - "que licença uso?", "README com badges", "CONTRIBUTING", "SECURITY.md".
 - Qualquer pedido com: SemVer, conventional commits, changelog, release, squash merge,
   semantic-release, release-please, git-cliff, scorecard, ruleset, governança OSS.
@@ -136,10 +138,14 @@ inválida → reescrever com o formato; versão incoerente → recalcular com `o
 - `references/releases-e-semver.md` — SemVer, semantic-release vs release-please vs git-cliff.
 - `references/rulesets-e-protecao.md` — GitHub Rulesets, JSON de governança, tags imutáveis.
 - `references/seguranca-openssf.md` — Scorecard ≥ 7, least privilege, SHA pinning, secrets.
+- `references/github-actions-automacoes.md` — automações completas: gatilhos, matrix,
+  cache/artifacts, reusable workflows, ambientes/secrets/OIDC, segurança, custos,
+  observabilidade e pipelines de testes por ecossistema.
 - `references/gh-cli-para-governanca.md` — superfície `gh`/`gh api` para governar.
 
 `assets/` traz os templates prontos (README, CONTRIBUTING, SECURITY, CODEOWNERS,
-workflows pinnados, rulesets JSON, licenças) consumidos por `oss-scaffold.sh`.
+workflows pinnados — incluindo `tests.yml`, `reusable-ci.yml`, `codeql.yml` e
+`dependency-review.yml` —, rulesets JSON, licenças) consumidos por `oss-scaffold.sh`.
 
 ## Fontes oficiais
 

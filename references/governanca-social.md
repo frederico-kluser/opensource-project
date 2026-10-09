@@ -69,25 +69,47 @@ Proteção de `main` por rulesets (base `assets/rulesets/regras-main.json`, mais
 detalhe em `references/rulesets-e-protecao.md`) — `POST /repos/{owner}/{repo}/rulesets`:
 
 ```bash
-gh api -X POST repos/OWNER/REPO/rulesets --input - <<'JSON'
+gh api --method POST -H "X-GitHub-Api-Version: 2022-11-28" \
+  repos/OWNER/REPO/rulesets --input - <<'JSON'
 {
   "name": "protecao-main",
   "target": "branch",
   "enforcement": "active",
-  "conditions": { "ref_name": { "include": ["refs/heads/main"], "exclude": [] } },
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
   "rules": [
-    { "type": "pull_request", "parameters": {
-        "required_approving_review_count": 1, "require_code_owner_review": true,
-        "dismiss_stale_reviews_on_push": true, "require_last_push_approval": true,
-        "required_status_checks": [{ "context": "ci" }],
-        "strict_required_status_checks": true,
-        "allowed_merge_methods": ["squash", "rebase"] } },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": true,
+        "require_last_push_approval": false,
+        "require_extra_approval_for_unattributed_changes": false,
+        "required_review_thread_resolution": false,
+        "required_reviewers": [],
+        "allowed_merge_methods": ["squash"]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [{ "context": "build" }],
+        "do_not_enforce_on_create": false
+      }
+    },
     { "type": "non_fast_forward" },
     { "type": "deletion" }
-  ]
+  ],
+  "bypass_actors": []
 }
 JSON
 ```
+
+Duas armadilhas validadas contra a API: o objeto `parameters` tem de vir **completo**
+(subconjuntos dão `422 data matches no possible input`) e o `context` do status check
+é o **nome do job** (aqui `build`), não `workflow / job`. Detalhe total em
+`references/rulesets-e-protecao.md`.
 
 ## SECURITY.md — divulgação responsável
 

@@ -26,7 +26,7 @@ checks obrigatórios. Nenhum ruleset consegue *alargar* o que outro apertou.
 2. **Histórico linear / squash** — `allowed_merge_methods: ["squash"]` +
    `required_linear_history`; merge commits ficam proibidos.
 3. **Status checks obrigatórios** — `required_status_checks` com
-   `strict_required_status_checks: true` (a branch tem de estar atualizada).
+   `strict_required_status_checks_policy: true` (a branch tem de estar atualizada).
 4. **Sem force push** — `non_fast_forward` bloqueia reescrita de história.
 5. **Sem delete** — `deletion` impede apagar `main`.
 6. **Commits assinados (opcional)** — `required_signatures` quando a equipa já assina;
