@@ -66,8 +66,9 @@ necessária para instalar/renovar o contrato e para os comandos dos gates.
   semântica de erros.
 - Renovar o contrato quando os gates mudarem: `oss-scaffold.sh --force` (os restantes
   ficheiros existentes são preservados salvo `--force` explícito).
-- README do projeto recebe a secção "Procedimentos de desenvolvimento" — humanos e
-  agentes veem o mesmo contrato.
+- O contrato vive **exclusivamente** em `CLAUDE.md`/`AGENTS.md` — não se escreve em
+  `README.md` nem em outro Markdown do projeto (o README é para humanos e
+  utilizadores; as instruções de agente ficam nos ficheiros de contrato).
 
 ## Regras de ouro
 

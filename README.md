@@ -73,25 +73,6 @@ references/                 # 10 guias: licenças, identidade, governança socia
 assets/                     # templates, workflows pinnados, rulesets JSON, licenças
 ```
 
-## Procedimentos de desenvolvimento (agentes de código)
-
-Uma vez a skill instalada num projeto, o comportamento dela fica **embutido**: o
-[CLAUDE.md](CLAUDE.md) (espelhado em [AGENTS.md](AGENTS.md)) é carregado
-automaticamente pelos harnesses e obriga o agente a seguir o contrato **sem que a
-skill precise de ser invocada** — o `oss-scaffold.sh` planta estes ficheiros em
-todo o projeto que governar.
-
-| Pedido do utilizador | O que acontece automaticamente |
-|---|---|
-| commit | Commits Convencionais impostos (`tipo(escopo)!: descrição`, ≤ 72 chars) |
-| push / PR | branch efémera → PR com título convencional → checks → squash merge |
-| mudar a versão | SemVer **calculado** dos commits (`feat`→MINOR, `fix`→PATCH, `!`→MAJOR) |
-| changelog | **gerado** dos commits — nunca reescrito à mão |
-| release | gates primeiro (`oss-gate.sh release`), tag anotada `vX.Y.Z`, notas do CHANGELOG |
-| workflows | actions fixadas por SHA, `permissions` mínimos, `timeout-minutes` |
-
-Antes de fechar qualquer tarefa: `bash scripts/oss-doctor.sh` sem nenhuma `[FALTA]`.
-
 ## Dogfooding
 
 Este repositório obedece aos próprios gates: licença MIT, changelog Keep a Changelog,
