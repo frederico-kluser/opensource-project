@@ -87,11 +87,11 @@ render() { # $1=src $2=dst-relativo
   mkdir -p "$(dirname "$dst")"
   OSS_PROJECT_NAME="$REPO" OSS_DESCRIPTION="$DESC" OSS_OWNER="$OWNER" OSS_REPO="$REPO" \
   OSS_LICENSE="$LICENSE" OSS_YEAR="$YEAR" OSS_HOLDER="$HOLDER" OSS_DEFAULT_BRANCH="$BRANCH" \
-  OSS_CONTACT="$CONTACT" python3 - "$src" "$dst" <<'PY'
+  OSS_CONTACT="$CONTACT" OSS_SKILL_ROOT="$SKILL_DIR" python3 - "$src" "$dst" <<'PY'
 import os, sys
 src, dst = sys.argv[1], sys.argv[2]
 keys = ["PROJECT_NAME", "DESCRIPTION", "OWNER", "REPO", "LICENSE", "YEAR",
-        "HOLDER", "DEFAULT_BRANCH", "CONTACT"]
+        "HOLDER", "DEFAULT_BRANCH", "CONTACT", "SKILL_ROOT"]
 text = open(src, encoding="utf-8").read()
 for k in keys:
     text = text.replace("{{" + k + "}}", os.environ.get("OSS_" + k, ""))
@@ -131,6 +131,18 @@ render "$ASSETS/templates/SECURITY.md.tpl" "SECURITY.md"
 render "$ASSETS/templates/CODE_OF_CONDUCT.md" "CODE_OF_CONDUCT.md"
 render "$ASSETS/templates/CHANGELOG.md.tpl" "CHANGELOG.md"
 render "$ASSETS/templates/CODEOWNERS.tpl" "CODEOWNERS"
+
+echo "-- Contrato operacional dos agentes (comportamento embutido) --"
+render "$ASSETS/templates/CLAUDE.md.tpl" "CLAUDE.md"
+if [ -e "$TARGET/AGENTS.md" ] && [ "$FORCE" -eq 0 ]; then
+  printf '  [IGNORADO]    AGENTS.md (existe; use --force)\n'; IGNORADO=$((IGNORADO+1))
+elif [ "$DRY" -eq 1 ]; then
+  printf '  [SOBRESCREVE] AGENTS.md (espelho de CLAUDE.md)\n'
+elif [ -e "$TARGET/CLAUDE.md" ]; then
+  cp "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
+  printf '  [CRIADO]      AGENTS.md (espelho de CLAUDE.md — lido por harnesses sem CLAUDE.md)\n'
+  CRIADO=$((CRIADO+1))
+fi
 
 echo "-- Templates de colaboração --"
 render "$ASSETS/templates/PULL_REQUEST_TEMPLATE.md" ".github/PULL_REQUEST_TEMPLATE.md"

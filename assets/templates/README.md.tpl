@@ -69,6 +69,24 @@ This project follows [Semantic Versioning](https://semver.org/) and keeps a deta
 automatically from `{{DEFAULT_BRANCH}}`; see the
 [releases page](https://github.com/{{OWNER}}/{{REPO}}/releases) for the latest version.
 
+## Development procedures (agents)
+
+This repository is governed by the **opensource-project** governance skill. Once the
+skill is installed, its behavior is **embedded in the project** — [CLAUDE.md](CLAUDE.md)
+(mirrored in [AGENTS.md](AGENTS.md)) is auto-loaded by coding agents, so the rules are
+followed **without anyone having to invoke the skill**:
+
+| Request | What happens automatically |
+|---|---|
+| commit | Conventional Commits enforced (`tipo(escopo)!: descrição`, ≤ 72 chars) |
+| push / PR | ephemeral branch → PR with conventional title → checks → squash merge |
+| change version | SemVer **calculated** from commits (`feat`→MINOR, `fix`→PATCH, `!`→MAJOR) |
+| changelog | **generated** from commits — never hand-edited |
+| release | gates first (`oss-gate.sh release`), annotated tag `vX.Y.Z`, notes from CHANGELOG |
+| workflows | actions pinned by SHA, least-privilege `permissions`, `timeout-minutes` |
+
+Every gate is verified by `scripts/oss-doctor.sh` before a task is closed.
+
 ## License
 
 Distributed under the `{{LICENSE}}` license. See [LICENSE](LICENSE) for details.

@@ -67,10 +67,30 @@ bash scripts/oss-gate.sh publish --version 1.4.0 --yes      # Gate 5
 ```
 SKILL.md                    # instruções da skill (núcleo operacional)
 scripts/                    # ferramentas coercivas (doctor, gate, scaffold, semver, changelog, pin-actions)
-references/                 # 9 guias: licenças, identidade, governança social, commits,
-                            # branching, releases, rulesets, segurança OpenSSF, gh CLI
+references/                 # 10 guias: licenças, identidade, governança social, commits,
+                            # branching, releases, rulesets, segurança OpenSSF,
+                            # GitHub Actions/automações, gh CLI
 assets/                     # templates, workflows pinnados, rulesets JSON, licenças
 ```
+
+## Procedimentos de desenvolvimento (agentes de código)
+
+Uma vez a skill instalada num projeto, o comportamento dela fica **embutido**: o
+[CLAUDE.md](CLAUDE.md) (espelhado em [AGENTS.md](AGENTS.md)) é carregado
+automaticamente pelos harnesses e obriga o agente a seguir o contrato **sem que a
+skill precise de ser invocada** — o `oss-scaffold.sh` planta estes ficheiros em
+todo o projeto que governar.
+
+| Pedido do utilizador | O que acontece automaticamente |
+|---|---|
+| commit | Commits Convencionais impostos (`tipo(escopo)!: descrição`, ≤ 72 chars) |
+| push / PR | branch efémera → PR com título convencional → checks → squash merge |
+| mudar a versão | SemVer **calculado** dos commits (`feat`→MINOR, `fix`→PATCH, `!`→MAJOR) |
+| changelog | **gerado** dos commits — nunca reescrito à mão |
+| release | gates primeiro (`oss-gate.sh release`), tag anotada `vX.Y.Z`, notas do CHANGELOG |
+| workflows | actions fixadas por SHA, `permissions` mínimos, `timeout-minutes` |
+
+Antes de fechar qualquer tarefa: `bash scripts/oss-doctor.sh` sem nenhuma `[FALTA]`.
 
 ## Dogfooding
 
