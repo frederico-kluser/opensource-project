@@ -1,6 +1,6 @@
 # CODEOWNERS — responsabilidade territorial por caminhos (revisão obrigatória)
 # Regra última vence; mantenha regras concisas (limite do GitHub: < 3 MB).
-* @ondokai
-/SKILL.md @ondokai
-/scripts/ @ondokai
-/assets/rulesets/ @ondokai
+* @frederico-kluser
+/SKILL.md @frederico-kluser
+/scripts/ @frederico-kluser
+/assets/rulesets/ @frederico-kluser

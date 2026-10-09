@@ -77,12 +77,27 @@ for wf in "$DIR"/*.yml "$DIR"/*.yaml; do
     ref="${uses##*@}"
     slug="${uses%@*}"
     repo="$(printf '%s' "$slug" | cut -d/ -f1-2)"
-    if sha="$(resolve_sha "$repo" "$ref")" && [ -n "$sha" ]; then
-      sed -i "s|uses:[[:space:]]*${slug}@${ref}|uses: ${slug}@${sha} # ${ref}|" "$wf"
-      echo "  fixado: ${slug}@${sha} # ${ref}"
+    # a versão pode vir no comentário: `owner/repo@<PIN_SHA> # v4.2.2`
+    comment="$(printf '%s' "$line" | sed -n 's/.*#[[:space:]]*//p' | awk '{print $1}')"
+    resolve_ref="$ref"
+    case "$comment" in
+      v[0-9]*|[0-9]*) resolve_ref="$comment" ;;
+    esac
+    if [ -z "$resolve_ref" ] || [ "$resolve_ref" = "<PIN_SHA>" ]; then
+      echo "  FALHOU: ${slug} sem versão conhecida (nem ref nem comentário trazem tag)"
+      FAILED=$((FAILED+1))
+      continue
+    fi
+    if sha="$(resolve_sha "$repo" "$resolve_ref")" && [ -n "$sha" ]; then
+      if grep -q "uses:[[:space:]]*${slug}@${ref}[[:space:]]*#" "$wf" 2>/dev/null; then
+        sed -i "s|uses:[[:space:]]*${slug}@${ref}[[:space:]]*#.*|uses: ${slug}@${sha} # ${resolve_ref}|" "$wf"
+      else
+        sed -i "s|uses:[[:space:]]*${slug}@${ref}|uses: ${slug}@${sha} # ${resolve_ref}|" "$wf"
+      fi
+      echo "  fixado: ${slug}@${sha} # ${resolve_ref}"
       FIXED=$((FIXED+1))
     else
-      echo "  FALHOU resolver ${repo}@${ref} (ref desconhecida ou sem acesso)"
+      echo "  FALHOU resolver ${repo}@${resolve_ref} (ref desconhecida ou sem acesso)"
       FAILED=$((FAILED+1))
     fi
   done <<< "$refs"

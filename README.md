@@ -1,6 +1,9 @@
 # opensource-project — agent skill de governança open-source de ciclo de vida total
 
+[![CI](https://github.com/frederico-kluser/opensource-project/actions/workflows/ci.yml/badge.svg)](https://github.com/frederico-kluser/opensource-project/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/frederico-kluser/opensource-project/badge)](https://securityscorecards.dev/viewer/?uri=github.com/frederico-kluser/opensource-project)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/frederico-kluser/opensource-project)](https://github.com/frederico-kluser/opensource-project/releases)
 ![Conventional Commits](https://img.shields.io/badge/commits-Conventional-fe2d52.svg)
 ![SemVer](https://img.shields.io/badge/version-SemVer-2ea44f.svg)
 

@@ -1,0 +1,22 @@
+{
+  "name": "Ramos de Release Protegidos",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["release/**"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1
+      }
+    }
+  ],
+  "bypass_actors": []
+}

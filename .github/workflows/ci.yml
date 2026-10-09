@@ -1,0 +1,74 @@
+# =============================================================================
+# CI — opensource-project (frederico-kluser/opensource-project)
+#
+# Actions fixadas por SHA (pinned dependencies) — formato em todos os `uses:`:
+#     owner/repo@<sha40> # vX.Y.Z
+# Para atualizar: resolva a tag nova e fixe-a com `bash scripts/oss-pin-actions.sh`.
+#
+# Check de governança: o job chama-se `build` no workflow `ci`, para o ruleset
+# `assets/rulesets/regras-main.json` poder exigi-lo como required status check.
+# =============================================================================
+
+name: ci
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+
+# Privilégio mínimo: o CI só precisa de ler o repositório.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Sintaxe dos scripts (bash)
+        run: |
+          set -e
+          for s in scripts/*.sh; do bash -n "$s"; done
+
+      - name: Compilação dos scripts (python)
+        run: python3 -m py_compile scripts/*.py
+
+      - name: Assets JSON válidos
+        run: |
+          python3 - <<'PY'
+          import glob, json, sys
+          files = glob.glob("assets/rulesets/*.json") + glob.glob("assets/templates/*.json") \
+                  + ["assets/templates/.releaserc.json"]
+          bad = 0
+          for f in sorted(set(files)):
+              try:
+                  json.load(open(f, encoding="utf-8"))
+                  print("JSON OK :", f)
+              except Exception as e:
+                  print("JSON ERRO:", f, e); bad = 1
+          sys.exit(bad)
+          PY
+
+      - name: Commits convencionais (últimos 25)
+        run: |
+          git log --format=%s -n 25 HEAD | while IFS= read -r s; do
+            case "$s" in "Merge "*|"Revert \""*|"fixup!"*|"squash!"*) continue ;; esac
+            python3 scripts/oss-version.py check-msg "$s" || exit 1
+          done
+
+      - name: Doctor de governança (local)
+        run: bash scripts/oss-doctor.sh --local
+
+      - name: Varredura de segredos
+        run: bash scripts/oss-gate.sh push --scan-only

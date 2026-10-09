@@ -109,12 +109,21 @@ gate_commit_msg() {
 }
 
 gate_push() {
-  local branch="${1:-}"
+  local branch="" scan_only=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --branch) branch="$2"; shift 2 ;;
+      --scan-only) scan_only=1; shift ;;
+      *) branch="$1"; shift ;;
+    esac
+  done
   need_git
   local db; db="$(default_branch)"
   [ -z "$branch" ] && branch="$(git rev-parse --abbrev-ref HEAD)"
   echo "Gate 2 · Push — fronteiras de ramificação e integridade"
-  if [ "$branch" = "$db" ]; then
+  if [ "$scan_only" -eq 1 ]; then
+    info "modo --scan-only (CI): política de ramificação ignorada; mantém-se a varredura"
+  elif [ "$branch" = "$db" ]; then
     if git remote get-url origin >/dev/null 2>&1; then
       bad "push direto para '$db' é proibido (Gate 2 — GitHub Flow)"
       info "Solução: git switch -c feat/<nome> && git push -u origin feat/<nome> e abra um PR"
