@@ -97,7 +97,7 @@ gate** — se falhar, corrigir a causa e repetir.
 | `scripts/oss-version.py` | Próximo SemVer calculado dos commits desde a última tag | `python3 scripts/oss-version.py next --json` |
 | `scripts/oss-changelog.py` | Gera a secção do CHANGELOG (Keep a Changelog) e insere com `--write` | `python3 scripts/oss-changelog.py --write` |
 | `scripts/oss-pin-actions.sh` | Converte `owner/repo@vX` em `owner/repo@<sha> # vX` nos workflows | `bash scripts/oss-pin-actions.sh --check` |
-| `scripts/link-skill-global.sh` | Liga esta skill globalmente (`~/.dsh/skills`, `~/.agents/skills`) | `bash scripts/link-skill-global.sh` |
+| `scripts/link-skill-global.sh` | Liga esta skill em TODOS os skill roots da máquina (12: `.agents`, `.claude`+contas, `.jcode`, `.pi`, `.dsh`, `opencode`, `.codex`) | `bash scripts/link-skill-global.sh [--check|--dry-run]` |
 
 Comandos de plataforma (delegar operações genéricas à `github-agent-skill`):
 

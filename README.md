@@ -31,7 +31,7 @@ de commit à publicação da versão, sem deixar espaço ao arbítrio humano.
 ## Instalação
 
 ```bash
-bash scripts/link-skill-global.sh   # liga em ~/.dsh/skills e ~/.agents/skills
+bash scripts/link-skill-global.sh   # liga nos 12 skill roots da máquina (--check/--dry-run/--unlink)
 ```
 
 ## Uso rápido (como skill de agente)
