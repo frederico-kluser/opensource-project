@@ -130,7 +130,7 @@ if [ "$LOCAL_ONLY" -eq 1 ]; then
 elif ! command -v curl >/dev/null 2>&1; then
   info "curl indisponível: verificação HTTP dos badges omitida"
 else
-  mapfile -t BADGES < <(grep -oE 'https://[^) ]+' README.md 2>/dev/null \
+  mapfile -t BADGES < <(grep -oE 'https://[^)"<> ]+' README.md 2>/dev/null \
     | grep -E 'badge\.svg|img\.shields\.io|shields\.io/|api\.securityscorecards\.dev' | sort -u)
   if [ "${#BADGES[@]}" -eq 0 ]; then
     warn "sem URLs de badge no README — sem telemetria pública"
