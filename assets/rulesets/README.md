@@ -36,6 +36,11 @@ Os corpos em JSON não têm comentários — as explicações ficam aqui.
 
 Notas:
 
+- **Aprovações à escala da equipa**: o template assume equipa (2 aprovações + code
+  owner review). Em repositório de **maintainer único**, `required_approving_review_count`
+  e `require_code_owner_review` têm de ser `false`/`0` — o autor de um PR não o pode
+  aprovar e o cofre ficaria permanentemente fechado. Mantenha sempre o PR obrigatório
+  (regra `pull_request` presente), os status checks e as travas de reescrita.
 - `~DEFAULT_BRANCH` é um *placeholder do próprio GitHub* (resolvido para o ramo padrão do
   repositório) — **não** confundir com `{{DEFAULT_BRANCH}}` do scaffold.
 - Em `regras-main.json`, o contexto de status check `build` tem de ser o **nome do job**
