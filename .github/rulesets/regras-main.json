@@ -1,7 +1,7 @@
 {
   "name": "Governan\u00e7a Principal Restrita",
   "target": "branch",
-  "enforcement": "disabled",
+  "enforcement": "active",
   "conditions": {
     "ref_name": {
       "include": [
