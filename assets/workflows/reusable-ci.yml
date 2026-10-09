@@ -1,0 +1,103 @@
+# =============================================================================
+# reusable-ci — workflow REUTILIZÁVEL (on: workflow_call) · opensource-project
+#
+# NOTA (para o agente, pt-PT):
+#   * Chamada: no REPO cliente, um workflow usa
+#       uses: OWNER/REPO/.github/workflows/reusable-ci.yml@v2
+#     com `with:` (inputs) e `secrets:` explícitos. Chame por TAG versionada.
+#   * PERMISSÕES HERDADAS: o GITHUB_TOKEN do workflow reutilizável é a
+#     INTERSEÇÃO das permissões do caller com as declaradas aqui — o caller não
+#     consegue elevar privilégios. Declare sempre `permissions:` mínimas.
+#   * REUSABLE vs COMPOSITE: um composite action (`action.yml`) empacota STEPS
+#     dentro do job do caller e NÃO chama workflows reutilizáveis; reusable
+#     workflow é uma unidade de JOBS com inputs/secrets/outputs. Use reusable
+#     para pipelines-standards de equipa (ci/release/deploy) e composite para
+#     pequenas receitas (setup + cache + lint).
+#   * Formato obrigatório em TODOS os `uses:`: owner/repo@<PIN_SHA> # vX.Y.Z
+#     (fixe com `bash scripts/oss-pin-actions.sh` antes do primeiro push).
+# =============================================================================
+
+name: reusable-ci
+
+on:
+  workflow_call:
+    inputs:
+      runtime-version:
+        description: "Runtime version to test against (e.g. 22, 3.12, 1.21)"
+        required: false
+        type: string
+        default: "22"
+      run-tests:
+        description: "Run the test suite"
+        required: false
+        type: boolean
+        default: true
+      artifact-name:
+        description: "Name of the uploaded test artifact"
+        required: false
+        type: string
+        default: "test-results"
+    secrets:
+      REGISTRY_TOKEN:
+        description: "Optional token for private registries"
+        required: false
+    outputs:
+      tested-version:
+        description: "Runtime version actually tested"
+        value: ${{ jobs.ci.outputs.tested-version }}
+      tests-result:
+        description: "Result of the test step (success/failure)"
+        value: ${{ jobs.ci.outputs.tests-result }}
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      tested-version: ${{ steps.meta.outputs.version }}
+      tests-result: ${{ steps.tests.outputs.result || steps.meta.outputs.result }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@<PIN_SHA> # v4.2.2
+
+      # Inputs nunca são interpolados dentro de `run:` (injeção) — passam por env.
+      - name: Meta
+        id: meta
+        env:
+          RUNTIME_VERSION: ${{ inputs.runtime-version }}
+        run: |
+          echo "version=${RUNTIME_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "result=skipped" >> "$GITHUB_OUTPUT"
+
+      - name: Set up runtime
+        uses: actions/setup-node@<PIN_SHA> # v4.4.0
+        with:
+          node-version: ${{ inputs.runtime-version }}
+          cache: npm
+
+      - name: Install dependencies (locked)
+        run: npm ci
+
+      - name: Run tests
+        id: tests
+        if: ${{ inputs.run-tests }}
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }} # opcional; nunca imprimir
+        run: |
+          mkdir -p test-results
+          npm test -- --reporter=junit --outputFile=test-results/junit.xml
+          echo "result=success" >> "$GITHUB_OUTPUT"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@<PIN_SHA> # v4.6.2
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: test-results/
+          retention-days: 14
+
+      - name: Sumário do run
+        run: echo "### reusable-ci ✅" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,117 @@
+# =============================================================================
+# tests — pipeline de testes (template) · opensource-project
+#
+# NOTA (para o agente): TODOS os `uses:` seguem o formato obrigatório
+#     owner/repo@<PIN_SHA> # vX.Y.Z
+# Um workflow com `<PIN_SHA>` literal não corre: fixe as actions por SHA com
+#     bash scripts/oss-pin-actions.sh          (converte)
+#     bash scripts/oss-pin-actions.sh --check  (vigia)
+# antes do primeiro push.
+#
+# CONTEXT DE REQUIRED STATUS CHECK: o ruleset exige o NOME DO JOB (não
+# `workflow / job`). Como a matriz gera um nome por combinação, o job agregador
+# `tests-ok` (nome estável) é o `context` a exigir em
+# assets/rulesets/regras-main.json → required_status_checks[].context.
+# =============================================================================
+
+name: tests
+
+on:
+  push:
+    branches: ["{{DEFAULT_BRANCH}}"]
+  pull_request:
+  workflow_dispatch:
+
+# Privilégio mínimo: testes só leem o repositório.
+permissions:
+  contents: read
+
+# Um run por ref; o novo cancela o obsoleto (poupa minutos).
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.runtime-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        runtime-version: ["22"]
+        # Matriz enxuta: acrescente SO/versões só os que suporta mesmo.
+        #   os: [ubuntu-latest, windows-latest, macos-14]
+        #   runtime-version: ["20", "22"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@<PIN_SHA> # v4.2.2
+
+      # ---- Runtime (escolha UM bloco; os restantes ficam comentados) --------
+      - name: Set up Node.js
+        uses: actions/setup-node@<PIN_SHA> # v4.4.0
+        with:
+          node-version: ${{ matrix.runtime-version }}
+          cache: npm # cache por hash do package-lock.json
+      # - name: Set up Python
+      #   uses: actions/setup-python@<PIN_SHA> # v5.x
+      #   with: { python-version: "${{ matrix.runtime-version }}" }
+      # - name: Set up Go
+      #   uses: actions/setup-go@<PIN_SHA> # v5.x
+      #   with: { go-version: "${{ matrix.runtime-version }}", cache: true }
+      # - name: Set up Rust
+      #   uses: dtolnay/rust-toolchain@<PIN_SHA> # stable
+      # - name: Rust cache
+      #   uses: Swatinem/rust-cache@<PIN_SHA> # v2
+
+      - name: Install dependencies (locked)
+        run: npm ci
+      # Python: run: pip install uv && uv pip install -r requirements.txt
+      # Go:     run: go mod download
+      # Rust:   (o cargo resolve sozinho)
+
+      - name: Run tests (JUnit + coverage)
+        run: |
+          mkdir -p test-results
+          npx vitest run --reporter=junit --outputFile=test-results/junit.xml \
+            --coverage --coverage.reporter=text --coverage.reporter=lcov
+        # pytest  --junitxml=test-results/junit.xml --cov=src
+        # go test ./... -race -coverprofile=coverage.out
+        # cargo test --workspace
+
+      # Artefactos: nome ÚNICO por combinação de matriz (v4: nomes imutáveis no
+      # run — colisão devolve 409) e `if: always()` para subir relatórios mesmo
+      # com falha. Retenção curta poupa armazenamento.
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@<PIN_SHA> # v4.6.2
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.runtime-version }}
+          path: test-results/
+          retention-days: 14
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@<PIN_SHA> # v4.6.2
+        with:
+          name: coverage-${{ matrix.os }}-${{ matrix.runtime-version }}
+          path: coverage/ # lcov/htmlcov/coverage.out — ajuste ao ecossistema
+          retention-days: 14
+
+  # Job agregador: nome ESTÁVEL → é este o `context` do required status check.
+  # Se qualquer perna da matriz falhar, este job falha e o PR fica bloqueado.
+  tests-ok:
+    name: tests-ok
+    needs: [test]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any matrix leg failed
+        if: needs.test.result != 'success'
+        run: |
+          echo "::error::Houve pernas da matriz com falha — ver o job 'test'"
+          exit 1
+      - name: Sumário do run
+        run: echo "### tests ✅" >> "$GITHUB_STEP_SUMMARY"
