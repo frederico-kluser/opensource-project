@@ -1,5 +1,9 @@
 # opensource-project — agent skill de governança open-source de ciclo de vida total
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Conventional Commits](https://img.shields.io/badge/commits-Conventional-fe2d52.svg)
+![SemVer](https://img.shields.io/badge/version-SemVer-2ea44f.svg)
+
 Uma **agent skill** que faz de arquiteto de governança para agentes de código: cada
 pedido do utilizador — *commit, push, mudar a versão, fazer release, publicar* —
 atravessa **gates** que forçam os padrões do open-source profissional, da mensagem

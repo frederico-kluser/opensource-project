@@ -53,8 +53,7 @@ git commit -m "correcao bug"    # fora da gramática Conventional Commits
 ## CODEOWNERS — revisão obrigatória por donos
 
 - Sintaxe: `padrão @dono` (globs estilo gitignore), um por linha, `#` comentários.
-- Localização (a primeira encontrada vence): `CODEOWNERS` na raiz,
-  `.github/CODEOWNERS` ou `docs/CODEOWNERS`.
+- Localização (a primeira vence): `CODEOWNERS` na raiz, `.github/CODEOWNERS` ou `docs/CODEOWNERS`.
 - Tem de ter **menos de 3 MB** — acima disso o GitHub ignora-o silenciosamente.
 - Só tem efeito com a revisão dos owners ativa (`require_code_owner_review: true`).
 
@@ -66,7 +65,8 @@ git commit -m "correcao bug"    # fora da gramática Conventional Commits
 /docs/         @org/docs
 ```
 
-Proteção de `main` por rulesets — `POST /repos/{owner}/{repo}/rulesets`:
+Proteção de `main` por rulesets (base `assets/rulesets/regras-main.json`, mais
+detalhe em `references/rulesets-e-protecao.md`) — `POST /repos/{owner}/{repo}/rulesets`:
 
 ```bash
 gh api -X POST repos/OWNER/REPO/rulesets --input - <<'JSON'
@@ -91,14 +91,13 @@ JSON
 
 ## SECURITY.md — divulgação responsável
 
-Estrutura obrigatória (template em `assets/templates/security.md`):
+Estrutura obrigatória (template em `assets/templates/SECURITY.md.tpl`):
 
 1. **Versões suportadas** — tabela; fonte única: o README/About liga aqui.
 2. **Como reportar em silêncio** — Private Vulnerability Reporting do GitHub
    (Security → Report a vulnerability), nunca issues públicas.
 3. **Divulgação coordenada** — acusação em 3 dias úteis, avaliação em 14 dias,
-   correção e divulgação até 90 dias (120 para bugs complexos), embargo
-   negociável.
+   divulgação até 90 dias (120 para bugs complexos), embargo negociável.
 4. **Contacto** — canal privado (email/formulário) e tempo de resposta esperado.
 5. **Recompensas** — bug bounty se existir; caso contrário, crédito no advisory.
 
@@ -140,7 +139,8 @@ contact_links:
     about: Use as discussions para dúvidas — issues são para bugs e features.
 ```
 
-- **PULL_REQUEST_TEMPLATE.md** com checklist (validado por `scripts/oss-gate.sh pr`):
+- **PULL_REQUEST_TEMPLATE.md** com checklist (o gate `scripts/oss-gate.sh pr`
+  exige título convencional, ramificação efémera e base `main`):
 
 ```markdown
 ## Checklist
@@ -162,7 +162,7 @@ contact_links:
 - **Quem decide**: os maintainers (o conjunto do CODEOWNERS); empates caem no
   maintainer lead; decisões rotineiras seguem "lazy consensus" no PR.
 - **RFCs para mudanças grandes** — breaking changes, arquitetura, licença,
-  descontinuar APIs: abrir discussion com `assets/templates/rfc.md`, discutir ≥ 7
+  descontinuar APIs: abrir uma discussion (RFC) com a proposta, discutir ≥ 7
   dias e registar a decisão no próprio RFC.
 - **Ladder de maintainers**: Contributor → Reviewer → Maintainer → Lead/Emeritus.
 - **Como se tornar maintainer**: contribuições consistentes + revisões úteis +

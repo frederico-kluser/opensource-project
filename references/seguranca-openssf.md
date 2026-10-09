@@ -11,8 +11,8 @@ fixa actions por SHA e `scripts/oss-gate.sh push|pr|release` aplica os gates.
 - Auditoria automatizada (~20 checks) de práticas de segurança do repositório:
   workflows, proteções de branch, revisão, dependências e manutenção.
 - Cada check devolve 0–10 e o projeto recebe uma nota agregada.
-- **Limiar de graduação desta skill: ≥ 7.0**. `scripts/oss-gate.sh release`
-  bloqueia releases e publicações abaixo de 7.0 e lista as checks em falha.
+- **Limiar de graduação desta skill: ≥ 7.0** — abaixo disso não há release: o
+  `scripts/oss-doctor.sh` acusa o estado e a skill trata-o como bloqueador.
 
 ## Como obter a nota
 
@@ -107,7 +107,7 @@ jobs:
 - **Ferramenta desta skill** (idempotente, só reescreve o que falta):
 
 ```bash
-bash scripts/oss-pin-actions.sh .github/workflows/
+bash scripts/oss-pin-actions.sh          # converte em .github/workflows/ (--check só audita)
 # owner/repo@v4 → owner/repo@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 ```
 
