@@ -8,6 +8,12 @@ geradas com `scripts/oss-changelog.py`.
 ## [Unreleased]
 
 ### Added
+- **Comportamento embutido por projeto**: `oss-scaffold.sh` planta `CLAUDE.md` +
+  `AGENTS.md` (contrato operacional carregado automaticamente pelos harnesses) e a
+  secção "Procedimentos de desenvolvimento" no README — os agentes seguem os gates
+  sem invocar a skill. Template `assets/templates/CLAUDE.md.tpl` com as regras
+  obrigatórias, a tabela pedido→procedimento, o checklist de fecho e a semântica
+  de erros.
 - Guia `references/github-actions-automacoes.md` e templates de pipelines
   (`tests.yml`, `reusable-ci.yml`, `codeql.yml`, `dependency-review.yml`):
   automações do GitHub Actions com pipelines de testes e conhecimento completo.

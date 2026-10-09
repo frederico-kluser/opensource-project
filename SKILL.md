@@ -52,6 +52,23 @@ gate** — se falhar, corrigir a causa e repetir.
 | 5 · Release/Publicação | "faz release", "publica" | Tag `vX.Y.Z` anotada, release notes, publicação via CI com secrets em Environments, sem versões retrocedidas | `oss-gate.sh release` / `publish` |
 | 6 · Segurança (transversal) | sempre | OpenSSF Scorecard ≥ 7, least privilege em workflows, actions fixadas por SHA, secret scanning | `oss-doctor.sh`, `oss-pin-actions.sh` |
 
+## Comportamento embutido no projeto (a skill não precisa de ser chamada)
+
+A partir do momento em que `oss-scaffold.sh` governa um projeto, ele planta
+**`CLAUDE.md` + `AGENTS.md`** (contrato operacional, espelhados) que os harnesses
+carregam **automaticamente**: o agente de código passa a seguir os gates, a tabela
+pedido→procedimento e o checklist de fecho **sem invocar esta skill**. A skill é
+necessária para instalar/renovar o contrato e para os comandos dos gates.
+
+- Conteúdo do contrato (template `assets/templates/CLAUDE.md.tpl`): as 7 regras
+  obrigatórias, o procedimento por pedido do utilizador (commit, push, PR, versão,
+  release, CI, dependências), o checklist "antes de fechar qualquer tarefa" e a
+  semântica de erros.
+- Renovar o contrato quando os gates mudarem: `oss-scaffold.sh --force` (os restantes
+  ficheiros existentes são preservados salvo `--force` explícito).
+- README do projeto recebe a secção "Procedimentos de desenvolvimento" — humanos e
+  agentes veem o mesmo contrato.
+
 ## Regras de ouro
 
 1. **Nenhum pedido contorna um gate.** "Push rápido" continua a exigir histórico
