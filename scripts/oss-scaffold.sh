@@ -14,6 +14,7 @@
 #   --branch NOME         ramificação predefinida (predef.: main)
 #   --contact EMAIL       contacto de segurança (predef.: security@<owner>.example)
 #   --release-engine X    release-please | semantic-release | none (predef.: release-please)
+#   --with-tests          acrescenta o pipeline de testes com matrix (assets/workflows/tests.yml)
 #   --install-hook        instala hook git commit-msg que invoca oss-gate.sh
 #   --force               sobrescreve ficheiros já existentes
 #   --dry-run             mostra o plano sem escrever
@@ -25,7 +26,7 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ASSETS="$SKILL_DIR/assets"
 
 TARGET="."; OWNER=""; REPO=""; DESC=""; LICENSE="mit"; HOLDER=""; YEAR=""
-BRANCH="main"; CONTACT=""; ENGINE="release-please"; FORCE=0; DRY=0; HOOK=0
+BRANCH="main"; CONTACT=""; ENGINE="release-please"; FORCE=0; DRY=0; HOOK=0; WITH_TESTS=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -39,6 +40,7 @@ while [ $# -gt 0 ]; do
     --branch) BRANCH="$2"; shift 2 ;;
     --contact) CONTACT="$2"; shift 2 ;;
     --release-engine) ENGINE="$2"; shift 2 ;;
+    --with-tests) WITH_TESTS=1; shift ;;
     --install-hook) HOOK=1; shift ;;
     --force) FORCE=1; shift ;;
     --dry-run) DRY=1; shift ;;
@@ -138,6 +140,10 @@ render "$ASSETS/templates/ISSUE_TEMPLATE/config.yml" ".github/ISSUE_TEMPLATE/con
 
 echo "-- CI e governança como código --"
 render "$ASSETS/workflows/ci.yml" ".github/workflows/ci.yml"
+if [ "$WITH_TESTS" -eq 1 ]; then
+  render "$ASSETS/workflows/tests.yml" ".github/workflows/tests.yml"
+  printf '  [INFO] pipeline de testes: ajuste a matrix ao stack e use o job agregador como required status check\n'
+fi
 render "$ASSETS/workflows/scorecard.yml" ".github/workflows/scorecard.yml"
 if [ "$ENGINE" = "release-please" ]; then
   render "$ASSETS/workflows/release-please.yml" ".github/workflows/release-please.yml"
