@@ -23,6 +23,9 @@ bad()  { printf '  [FAIL] %s\n' "$*"; FAIL=$((FAIL+1)); }
 warn() { printf '  [AVISO] %s\n' "$*"; WARN=$((WARN+1)); }
 info() { printf '  [INFO] %s\n' "$*"; }
 die()  { printf 'Erro: %s — Solução: %s\n' "$1" "$2" >&2; exit "${3:-1}"; }
+need_val() { # $1=flag $2=nº de args restantes $3=uso — um flag sem valor é USO INVÁLIDO (exit 2), nunca crash de `set -u`
+  [ "$2" -ge 2 ] || die "falta o valor de $1" "uso: $3" 2
+}
 
 need_git() {
   command -v git >/dev/null 2>&1 || die "git não está instalado" "instale o git e repita" 3
@@ -112,7 +115,7 @@ gate_push() {
   local branch="" scan_only=0
   while [ $# -gt 0 ]; do
     case "$1" in
-      --branch) branch="$2"; shift 2 ;;
+      --branch) need_val "$1" "$#" "oss-gate.sh push [--branch <nome>] [--scan-only]"; branch="$2"; shift 2 ;;
       --scan-only) scan_only=1; shift ;;
       *) branch="$1"; shift ;;
     esac
@@ -169,8 +172,8 @@ gate_pr() {
   local title="" base=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --title) title="$2"; shift 2 ;;
-      --base)  base="$2"; shift 2 ;;
+      --title) need_val "$1" "$#" "oss-gate.sh pr [--title T] [--base B]"; title="$2"; shift 2 ;;
+      --base)  need_val "$1" "$#" "oss-gate.sh pr [--title T] [--base B]"; base="$2"; shift 2 ;;
       *) die "argumento desconhecido: $1" "uso: oss-gate.sh pr [--title T] [--base B]" 2 ;;
     esac
   done
@@ -197,7 +200,7 @@ gate_merge() {
   local title=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --title) title="$2"; shift 2 ;;
+      --title) need_val "$1" "$#" "oss-gate.sh merge [--title T]"; title="$2"; shift 2 ;;
       *) die "argumento desconhecido: $1" "uso: oss-gate.sh merge [--title T]" 2 ;;
     esac
   done
@@ -215,8 +218,8 @@ gate_release() {
   local want="" ; local extra=()
   while [ $# -gt 0 ]; do
     case "$1" in
-      --version) want="$2"; shift 2 ;;
-      --from-tag|--bump) extra+=("$1" "$2"); shift 2 ;;
+      --version) need_val "$1" "$#" "oss-gate.sh release [--version X.Y.Z]"; want="$2"; shift 2 ;;
+      --from-tag|--bump) need_val "$1" "$#" "oss-gate.sh release [--version X.Y.Z]"; extra+=("$1" "$2"); shift 2 ;;
       *) die "argumento desconhecido: $1" "uso: oss-gate.sh release [--version X.Y.Z]" 2 ;;
     esac
   done
@@ -276,7 +279,7 @@ gate_publish() {
   local want="" yes=0
   while [ $# -gt 0 ]; do
     case "$1" in
-      --version) want="$2"; shift 2 ;;
+      --version) need_val "$1" "$#" "oss-gate.sh publish [--version X.Y.Z] --yes"; want="$2"; shift 2 ;;
       --yes) yes=1; shift ;;
       *) die "argumento desconhecido: $1" "uso: oss-gate.sh publish [--version X.Y.Z] --yes" 2 ;;
     esac
@@ -326,7 +329,7 @@ main() {
   case "$action" in
     commit-msg|commit) [ $# -ge 1 ] || die "falta a mensagem ou o ficheiro" "uso: oss-gate.sh commit-msg <ficheiro|mensagem>" 2
                        gate_commit_msg "$1" ;;
-    push)              gate_push "${1:-}" ;;
+    push)              gate_push "$@" ;;
     pr)                gate_pr "$@" ;;
     merge)             gate_merge "$@" ;;
     release)           gate_release "$@" ;;

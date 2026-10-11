@@ -28,18 +28,22 @@ ASSETS="$SKILL_DIR/assets"
 TARGET="."; OWNER=""; REPO=""; DESC=""; LICENSE="mit"; HOLDER=""; YEAR=""
 BRANCH="main"; CONTACT=""; ENGINE="release-please"; FORCE=0; DRY=0; HOOK=0; WITH_TESTS=0
 
+need_val() { # $1=flag $2=nº de args restantes — flag sem valor é USO INVÁLIDO (exit 2), nunca crash de `set -u`
+  [ "$2" -ge 2 ] || { printf 'Erro: falta o valor de %s — Solução: veja --help\n' "$1" >&2; exit 2; }
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
-    --target) TARGET="$2"; shift 2 ;;
-    --owner) OWNER="$2"; shift 2 ;;
-    --repo) REPO="$2"; shift 2 ;;
-    --desc) DESC="$2"; shift 2 ;;
-    --license) LICENSE="$2"; shift 2 ;;
-    --holder) HOLDER="$2"; shift 2 ;;
-    --year) YEAR="$2"; shift 2 ;;
-    --branch) BRANCH="$2"; shift 2 ;;
-    --contact) CONTACT="$2"; shift 2 ;;
-    --release-engine) ENGINE="$2"; shift 2 ;;
+    --target) need_val "$1" "$#"; TARGET="$2"; shift 2 ;;
+    --owner) need_val "$1" "$#"; OWNER="$2"; shift 2 ;;
+    --repo) need_val "$1" "$#"; REPO="$2"; shift 2 ;;
+    --desc) need_val "$1" "$#"; DESC="$2"; shift 2 ;;
+    --license) need_val "$1" "$#"; LICENSE="$2"; shift 2 ;;
+    --holder) need_val "$1" "$#"; HOLDER="$2"; shift 2 ;;
+    --year) need_val "$1" "$#"; YEAR="$2"; shift 2 ;;
+    --branch) need_val "$1" "$#"; BRANCH="$2"; shift 2 ;;
+    --contact) need_val "$1" "$#"; CONTACT="$2"; shift 2 ;;
+    --release-engine) need_val "$1" "$#"; ENGINE="$2"; shift 2 ;;
     --with-tests) WITH_TESTS=1; shift ;;
     --install-hook) HOOK=1; shift ;;
     --force) FORCE=1; shift ;;

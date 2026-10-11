@@ -15,7 +15,8 @@ DIR=".github/workflows"
 while [ $# -gt 0 ]; do
   case "$1" in
     --check) CHECK=1; shift ;;
-    --dir) DIR="$2"; shift 2 ;;
+    --dir) [ $# -ge 2 ] || { printf 'Erro: falta o valor de --dir — Solução: use --dir <pasta>\n' >&2; exit 2; }
+           DIR="$2"; shift 2 ;;
     --help|-h) sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) printf 'Erro: argumento desconhecido: %s — Solução: use --check ou --dir\n' "$1" >&2; exit 2 ;;
   esac
