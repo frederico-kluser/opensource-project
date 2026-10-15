@@ -208,8 +208,11 @@ def cmd_check_msg(args: argparse.Namespace) -> int:
             problems.append(
                 f"tipo `{m.group('type')}` desconhecido; use: {', '.join(KNOWN_TYPES)}"
             )
-        if len(subject) > 72:
-            problems.append(f"cabeçalho com {len(subject)} chars (máx. 72)")
+        # o sufixo " (#N)" é aposto pelo GitHub no squash merge (referência do PR) —
+        # não faz parte do cabeçalho escrito pelo humano e não conta para os 72 chars
+        header = re.sub(r"\s+\(#\d+\)$", "", subject)
+        if len(header) > 72:
+            problems.append(f"cabeçalho com {len(header)} chars (máx. 72, sem o sufixo ` (#N)` do GitHub)")
         if not m.group("desc")[0].islower() and not m.group("desc")[0].isupper():
             problems.append("descrição deve começar por letra")
     if problems:

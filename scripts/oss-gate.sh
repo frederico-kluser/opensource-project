@@ -99,7 +99,9 @@ validate_message() { # $1 = mensagem completa
     info "formato exigido: tipo(escopo)!: descrição — ex.: fix(auth): corrige validação de token"
     problems=1
   fi
-  [ "${#subject}" -gt 72 ] && { bad "cabeçalho com ${#subject} chars (máx. 72)"; problems=1; }
+  # o sufixo " (#N)" do GitHub no squash merge não conta para os 72 chars
+  local header; header="$(printf '%s' "$subject" | sed -E 's/ \(#[0-9]+\)$//')"
+  [ "${#header}" -gt 72 ] && { bad "cabeçalho com ${#header} chars (máx. 72, sem o sufixo ` (#N)` do GitHub)"; problems=1; }
   if printf '%s' "$1" | grep -qiE '^BREAKING[ -]CHANGE: .+'; then
     info "BREAKING CHANGE detetado → próximo release será MAJOR"
   fi
