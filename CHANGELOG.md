@@ -5,6 +5,33 @@ O versionamento segue [SemVer](https://semver.org/lang/pt-BR/); os números são
 calculados dos Commits Convencionais com `scripts/oss-version.py` e as entradas são
 geradas com `scripts/oss-changelog.py`.
 
+## 1.0.0 (2026-10-15)
+
+
+### Features
+
+* adiciona automações do GitHub Actions e pipelines de testes ([#5](https://github.com/frederico-kluser/opensource-project/issues/5)) ([eb211c6](https://github.com/frederico-kluser/opensource-project/commit/eb211c671da2cda88b0c25a3df9b58a31eebc68f))
+* cria a skill opensource-project de governança de ciclo de vida OSS ([a1cb0d7](https://github.com/frederico-kluser/opensource-project/commit/a1cb0d732396d47348a867cc29cb523a28d45051))
+* embute o comportamento da skill em CLAUDE.md e AGENTS.md ([#6](https://github.com/frederico-kluser/opensource-project/issues/6)) ([51febdb](https://github.com/frederico-kluser/opensource-project/commit/51febdbc78de47c75f55d2eaebd8ebe0b89c264d))
+* **governanca:** impõe nomes de branch e proíbe commits diretos ([#9](https://github.com/frederico-kluser/opensource-project/issues/9)) ([3ca8dd0](https://github.com/frederico-kluser/opensource-project/commit/3ca8dd03411468edf15f79d3afc174c0f2dd1aee))
+* **hooks:** regras locais em qualquer projeto (pre-push + commit-msg) ([#11](https://github.com/frederico-kluser/opensource-project/issues/11)) ([90a4e55](https://github.com/frederico-kluser/opensource-project/commit/90a4e55a2a0f8657db778b3fd7c92a87beb311bf))
+* liga a skill nos 12 skill roots globais da máquina ([#3](https://github.com/frederico-kluser/opensource-project/issues/3)) ([bc3d14e](https://github.com/frederico-kluser/opensource-project/commit/bc3d14e60e4d8b88cf75f7018cd1dcf40ecffa2f))
+
+
+### Bug Fixes
+
+* badges que renderizam sempre e gate de conteúdo no doctor ([#4](https://github.com/frederico-kluser/opensource-project/issues/4)) ([c8c9332](https://github.com/frederico-kluser/opensource-project/commit/c8c93320fcee27375dac5701df5dce908e006da5))
+* contrato de agentes só em CLAUDE.md e AGENTS.md ([#7](https://github.com/frederico-kluser/opensource-project/issues/7)) ([2223b3b](https://github.com/frederico-kluser/opensource-project/commit/2223b3b73ab7d18edc2f5156bdd03effc92db164))
+* corrige rulesets e release-please com o schema real da API ([28a6022](https://github.com/frederico-kluser/opensource-project/commit/28a6022f27203e2c179e90161df03ff6d5b647d0))
+* **gate:** push --branch passava só o 1.º arg; flag sem valor crashava ([#8](https://github.com/frederico-kluser/opensource-project/issues/8)) ([00cf25b](https://github.com/frederico-kluser/opensource-project/commit/00cf25ba99b0951cb310cb1df26fc2956ffcfeb1))
+* **governanca:** enforcement de nomes portável e metadata Enterprise ([#10](https://github.com/frederico-kluser/opensource-project/issues/10)) ([5ed3be6](https://github.com/frederico-kluser/opensource-project/commit/5ed3be662076c55da90c5c8b6076a2206727b468))
+* primeiro release 0.1.0 e regras de maintainer único ([51d8199](https://github.com/frederico-kluser/opensource-project/commit/51d8199575fd4451f8a6679ac4ffdb73fab0f2bf))
+
+
+### Documentation
+
+* alinha a referência de segurança OpenSSF com os scripts ([c714c51](https://github.com/frederico-kluser/opensource-project/commit/c714c512e11f6d447ab9de3ae3cc9aba11254dcf))
+
 ## [Unreleased]
 
 ### Added
