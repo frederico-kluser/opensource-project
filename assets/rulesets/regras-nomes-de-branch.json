@@ -1,0 +1,29 @@
+{
+  "name": "Convenção de Nomes de Ramificação",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/**"],
+      "exclude": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/main",
+        "refs/heads/master",
+        "refs/heads/develop",
+        "refs/heads/gh-pages"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "branch_name_pattern",
+      "parameters": {
+        "name": "tipo/slug convencional obrigatório",
+        "negate": false,
+        "operator": "regex",
+        "pattern": "^((feat|fix|docs|style|refactor|perf|test|build|ci|revert|hotfix|release)/[a-zA-Z0-9][a-zA-Z0-9._/-]*|(dependabot|renovate)/[a-zA-Z0-9._/-]+|release-please--.*|gh-readonly-queue/.*)$"
+      }
+    }
+  ],
+  "bypass_actors": []
+}

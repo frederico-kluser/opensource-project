@@ -29,18 +29,50 @@ releases cadenciadas e equipas fechadas. Em open-source colaborativo falha:
 5. **Delete branch após merge** — `gh pr merge --squash --delete-branch`; ramificação
    morta é ruído e armadilha para o próximo contribuidor.
 
-## Naming de ramificações
+## Naming de ramificações — convenção FECHADA, imposta pelo GitHub
+
+O nome da branch não é gosto: é contrato. O ruleset **"Convenção de Nomes de
+Ramificação"** recusa o push de qualquer branch fora de `<tipo>/<slug>` — o tipo
+pertence a um conjunto fechado:
 
 | Padrão | Uso | Exemplo |
 |---|---|---|
-| `feat/<nome>` | funcionalidade nova | `feat/refresh-token` |
-| `fix/<nome>` | correção | `fix/cookie-expiry` |
-| `chore/<nome>` | manutenção, dependências, CI | `chore/bump-deps` |
-| `docs/<nome>`, `test/<nome>`, `refactor/<nome>` | conforme o tipo de commit dominante | `docs/api-examples` |
+| `feat/<slug>` | funcionalidade nova | `feat/refresh-token` |
+| `fix/<slug>` | correção | `fix/cookie-expiry` |
+| `chore/<slug>` | manutenção, dependências | `chore/bump-deps` |
+| `docs/<slug>` | documentação | `docs/api-examples` |
+| `style/<slug>` | formatação, sem lógica | `style/prettier-pass` |
+| `refactor/<slug>` | reestruturação, sem comportamento novo | `refactor/extract-parser` |
+| `perf/<slug>` | performance | `perf/cache-warmup` |
+| `test/<slug>` | testes | `test/edge-cases` |
+| `build/<slug>` | build/packaging | `build/vite-5` |
+| `ci/<slug>` | CI/CD | `ci/runner-matrix` |
+| `revert/<slug>` | reverts | `revert/refresh-token` |
+| `hotfix/<slug>` | correção urgente em produção | `hotfix/null-deref` |
 | `release/x.y` | **apenas** manutenção de uma release passada | `release/1.4` |
 
-Regras: minúsculas, kebab-case, sem datas nem nomes de pessoas — o nome descreve a
-mudança, não o autor. `release/x.y` nunca é linha de desenvolvimento (ver hotfixes).
+Regras: slug curto, minúsculo, kebab-case, sem datas nem nomes de pessoas — o nome
+descreve a mudança, não o autor. `release/x.y` nunca é linha de desenvolvimento
+(ver hotfixes). Únicas exceções (automação, nunca humanos): `dependabot/*`,
+`renovate/*`, `release-please--*`, `gh-readonly-queue/*`. Ramos longevos
+(`main`, `master`, `develop`, `gh-pages`, predefinido) mantêm o nome e ficam
+protegidos de commits diretos.
+
+A validação existe em três camadas — todas com o MESMO regex (fonte única:
+`scripts/oss-branch-policy.sh` ↔ `assets/rulesets/regras-nomes-de-branch.json`):
+
+1. **Local**: `bash scripts/oss-gate.sh branch <nome>` (e o gate `push` bloqueia nomes
+   inválidos antes do push).
+2. **Servidor**: o ruleset recusa criar/atualizar o ref — nem administrador passa.
+3. **Auditoria**: `oss-enforce.sh` e `oss-doctor.sh` listam branches antigas fora da
+   convenção (o ruleset impede atualizá-las; renomear é a cura:
+   `git branch -m <old> <tipo>/<slug>`).
+
+```bash
+git switch -c feat/refresh-token main   # ✓
+git switch -c Feature/RefreshToken      # ✗ o GitHub recusa o push
+git switch -c fixes-login               # ✗ sem tipo/ não passa
+```
 
 ## Trunk-Based Development vs GitHub Flow
 

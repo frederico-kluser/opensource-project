@@ -15,8 +15,9 @@ Regras gerais do scaffold (garantidas pelo `oss-scaffold.sh`):
 3. **Sufixo `.tpl` removido** — `templates/README.md.tpl` → `README.md`, `templates/CODEOWNERS.tpl`
    → `.github/CODEOWNERS`, etc. Os restantes ficheiros mantêm o nome.
 4. **Ficheiros sem destino fixo** — `package-husky-fragment.json` não é copiado tal como está:
-   é um fragmento para colar/mergear no `package.json` (ver abaixo). Os `rulesets/*.json` não são
-   copiados para o repositório: são aplicados via API do GitHub (ver `rulesets/README.md`).
+   é um fragmento para colar/mergear no `package.json` (ver abaixo). Os `rulesets/*.json` são
+   copiados para `.github/rulesets/` (governança como código) e aplicados/reconciliados no
+   GitHub pelo `oss-enforce.sh` (ver `rulesets/README.md`).
 
 ## Placeholders
 
@@ -60,9 +61,11 @@ Regras gerais do scaffold (garantidas pelo `oss-scaffold.sh`):
 | `workflows/release-please.yml`                    | Workflow de release via `googleapis/release-please-action` com permissões mínimas.                  | Placeholders substituídos → `.github/workflows/release-please.yml`.                                  |
 | `workflows/scorecard.yml`                         | Análise OpenSSF Scorecard (SARIF + `publish_results: true`).                                        | Placeholders substituídos → `.github/workflows/scorecard.yml`.                                       |
 | `workflows/semantic-release.yml`                  | Alternativa de release pós-merge com `npx semantic-release` e environment `production`.             | Placeholders substituídos → `.github/workflows/semantic-release.yml`.                                |
-| `rulesets/regras-main.json`                       | Ruleset do ramo padrão e `refs/heads/release/**` (PR + squash + status checks strict).              | **Não copiado**: aplicado via `gh api --method POST ... --input` (ver `rulesets/README.md`).          |
-| `rulesets/regras-tags.json`                       | Ruleset que torna as tags `refs/tags/v*` imutáveis (sem update/sem delete).                         | **Não copiado**: aplicado via `gh api` (ver `rulesets/README.md`).                                    |
-| `rulesets/regras-release.json`                    | Ruleset dos ramos `refs/heads/release/**` (1 aprovação, sem force-push, sem delete).                | **Não copiado**: aplicado via `gh api` (ver `rulesets/README.md`).                                    |
+| `rulesets/regras-main.json`                       | Ruleset do ramo predefinido + `main`/`master`/`develop`/`refs/heads/release/**` (PR + squash + status checks strict + linear history — **commits diretos recusados**). | Copiado → `.github/rulesets/` e aplicado no GitHub por `oss-enforce.sh` (ver `rulesets/README.md`). |
+| `rulesets/regras-tags.json`                       | Ruleset que torna as tags `refs/tags/v*` imutáveis (sem update/sem delete).                         | Copiado → `.github/rulesets/` e aplicado por `oss-enforce.sh`.                                       |
+| `rulesets/regras-release.json`                    | Ruleset dos ramos `refs/heads/release/**` (1 aprovação, sem force-push, sem delete).                | Copiado → `.github/rulesets/` e aplicado por `oss-enforce.sh`.                                       |
+| `rulesets/regras-nomes-de-branch.json`            | Ruleset que **REJEITA** branches fora de `<tipo>/<slug>` (exceções: bots e ramos longevos).          | Copiado → `.github/rulesets/` e aplicado por `oss-enforce.sh`.                                       |
+| `rulesets/regras-commits.json`                    | Ruleset que **REJEITA** mensagens fora de Conventional Commits em ramos protegidos.                 | Copiado → `.github/rulesets/` e aplicado por `oss-enforce.sh`.                                       |
 | `rulesets/README.md`                              | Instruções (pt-PT) de aplicação/listagem/ordem dos rulesets.                                        | Não é copiado para o projeto-alvo; serve o agente que executa o scaffold.                             |
 | `licenses/MIT.txt`                                | Texto integral da licença MIT com `{{YEAR}}`/`{{HOLDER}}`.                                          | Placeholders substituídos → `LICENSE` na raiz.                                                        |
 | `licenses/README.md`                              | Instruções (pt-PT) para obter Apache-2.0/GPL-3.0/MPL-2.0 a partir do SPDX.                          | Não é copiado para o projeto-alvo; serve o agente que executa o scaffold.                             |
@@ -78,5 +81,7 @@ Regras gerais do scaffold (garantidas pelo `oss-scaffold.sh`):
   `.husky/commit-msg` com o conteúdo `npx --no -- commitlint --edit $1`).
 - **Release**: escolher **um** dos dois caminhos (`release-please` **ou** `semantic-release`) — nunca
   ambos em simultâneo sobre a mesma branch, ou haverá releases duplicados.
-- **Rulesets**: aplicar depois do primeiro push (os rulesets de `required_status_checks` bloqueiam o
-  merge enquanto os checks não existirem); ver ordem recomendada em `rulesets/README.md`.
+- **Rulesets**: o caminho normal é `bash scripts/oss-enforce.sh` — aplica os 5 rulesets
+  (cria os ausentes, reconcilia os divergentes) depois do primeiro push (os rulesets de
+  `required_status_checks` bloqueiam o merge enquanto os checks não existirem); ver
+  ordem recomendada em `rulesets/README.md`.

@@ -32,6 +32,10 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT" || exit 4
 
+SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/oss-branch-policy.sh
+source "$SKILL_DIR/scripts/oss-branch-policy.sh" 2>/dev/null || true
+
 has() { [ -e "$1" ]; }
 
 check_file() { # $1=caminho $2=etiqueta $3=severidade (fail|warn)
@@ -95,6 +99,29 @@ if has commitlint.config.js || has commitlint.config.cjs || has .commitlintrc.js
 else
   warn "commitlint em falta (em repos Node); alternativa: oss-gate.sh commit-msg no hook"
 fi
+
+head_ "Convenção de nomes de ramificação (Gate 2)"
+if type oss_branch_ok >/dev/null 2>&1; then
+  TOTAL_B=0; VIOL_B=0
+  while IFS= read -r b; do
+    [ -z "$b" ] && continue
+    TOTAL_B=$((TOTAL_B+1))
+    if oss_branch_ok "$b"; then :; else
+      bad "branch FORA da convenção: $b — o GitHub rejeita updates nesta ref (ruleset de nomes)"
+      info "Solução: git branch -m $b <tipo>/<slug> (ou git branch -d $b se já merged)"
+      VIOL_B=$((VIOL_B+1))
+    fi
+  done < <(git for-each-ref refs/heads --format='%(refname:short)' 2>/dev/null)
+  [ "$VIOL_B" -eq 0 ] && ok "$TOTAL_B branch(es) locais seguem <tipo>/<slug>"
+else
+  warn "oss-branch-policy.sh em falta — verificação de nomes omitida (reinstale a skill)"
+fi
+
+head_ "Governança como código (rulesets versionados)"
+for f in regras-main.json regras-release.json regras-tags.json regras-nomes-de-branch.json regras-commits.json; do
+  check_file ".github/rulesets/$f" "Ruleset $f"
+done
+info "ficheiros em falta são criados por oss-scaffold.sh e aplicados no GitHub por oss-enforce.sh"
 
 head_ "CI e segurança dos workflows (Gate 6)"
 WF_COUNT=0; UNPINNED=0; NOPERM=0
@@ -183,13 +210,32 @@ else
   REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" || REPO=""
   if [ -n "$REPO" ]; then
     ok "repositório remoto: $REPO (ramificação predefinida: $(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null))"
-    RULES="$(gh api "repos/$REPO/rulesets" --jq 'length' 2>/dev/null)" || RULES=""
+    RULES="$(gh api "repos/$REPO/rulesets?per_page=100" --jq '[.[].name] | join("\n")' 2>/dev/null)" || RULES=""
     if [ -z "$RULES" ]; then
       warn "sem consulta de rulesets (token sem escopo administration ou sem rulesets)"
-    elif [ "${RULES:-0}" -gt 0 ]; then
-      ok "$RULES ruleset(s) ativo(s): $(gh api "repos/$REPO/rulesets" --jq '[.[].name] | join(", ")' 2>/dev/null)"
     else
-      bad "nenhum ruleset configurado — main sem cofre (aplique assets/rulesets/regras-main.json)"
+      MISSING_RS=0
+      for n in "Governança Principal Restrita" "Ramos de Release Protegidos" "Tags de Release Imutáveis" \
+               "Convenção de Nomes de Ramificação" "Convenção de Mensagens de Commit"; do
+        if printf '%s\n' "$RULES" | grep -Fxq "$n"; then
+          ok "ruleset ativo: $n"
+        else
+          bad "ruleset EM FALTA no GitHub: $n"
+          MISSING_RS=$((MISSING_RS+1))
+        fi
+      done
+      [ "$MISSING_RS" -gt 0 ] && info "Solução: bash $SKILL_DIR/scripts/oss-enforce.sh — cria e reconcilia os rulesets automaticamente"
+    fi
+    VIOL_R=0
+    if type oss_branch_ok >/dev/null 2>&1; then
+      while IFS= read -r b; do
+        [ -z "$b" ] && continue
+        oss_branch_ok "$b" && continue
+        bad "branch remota FORA da convenção: $b — updates recusados pelo ruleset de nomes"
+        info "Solução: renomeie (git push origin :$b $b:<tipo>/<slug>) ou apague se já merged"
+        VIOL_R=$((VIOL_R+1))
+      done < <(gh api "repos/$REPO/branches?per_page=100" --paginate --jq '.[].name' 2>/dev/null)
+      [ "$VIOL_R" -eq 0 ] && ok "branches remotas seguem a convenção de nomes"
     fi
     PUSH_PROT="$(gh api "repos/$REPO/secret-scanning/push-protection" --jq '.enabled' 2>/dev/null)" || PUSH_PROT=""
     case "$PUSH_PROT" in
@@ -205,7 +251,7 @@ fi
 head_ "Resumo"
 printf '  %d ok · %d em falta · %d avisos\n' "$PASS" "$FAIL" "$WARN"
 if [ "$FAIL" -gt 0 ]; then
-  printf '  Governança INCOMPLETA — corrija as lacunas (oss-scaffold.sh cria a fundação) antes do push/release.\n'
+  printf '  Governança INCOMPLETA — corra: bash %s/scripts/oss-enforce.sh (cria e reconcilia tudo o que falta) e repita o doctor.\n' "$SKILL_DIR"
   exit 1
 fi
 printf '  Governança operável. Continue com os gates por ação (oss-gate.sh).\n'
