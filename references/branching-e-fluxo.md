@@ -58,12 +58,14 @@ descreve a mudança, não o autor. `release/x.y` nunca é linha de desenvolvimen
 (`main`, `master`, `develop`, `gh-pages`, predefinido) mantêm o nome e ficam
 protegidos de commits diretos.
 
-A validação existe em três camadas — todas com o MESMO regex (fonte única:
-`scripts/oss-branch-policy.sh` ↔ `assets/rulesets/regras-nomes-de-branch.json`):
+A validação existe em três camadas — o regex da política local (fonte única:
+`scripts/oss-branch-policy.sh`) e o fnmatch do ruleset
+(`assets/rulesets/regras-nomes-de-branch.json`) espelham a mesma lista de tipos:
 
 1. **Local**: `bash scripts/oss-gate.sh branch <nome>` (e o gate `push` bloqueia nomes
-   inválidos antes do push).
-2. **Servidor**: o ruleset recusa criar/atualizar o ref — nem administrador passa.
+   inválidos antes do push) — valida o regex completo, incluindo o slug.
+2. **Servidor**: o ruleset recusa criar/atualizar o ref fora de `<tipo>/<slug>`
+   (regras `creation`+`update`; só atores com bypass autorizado passam).
 3. **Auditoria**: `oss-enforce.sh` e `oss-doctor.sh` listam branches antigas fora da
    convenção (o ruleset impede atualizá-las; renomear é a cura:
    `git branch -m <old> <tipo>/<slug>`).

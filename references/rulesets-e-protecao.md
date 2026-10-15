@@ -34,12 +34,16 @@ checks obrigatórios. Nenhum ruleset consegue *alargar* o que outro apertou.
 5. **Sem delete** — `deletion` impede apagar `main`.
 6. **Commits assinados (opcional)** — `required_signatures` quando a equipa já assina;
    ativar por fases, nunca primeiro que tudo.
-7. **Nomes de ramificação impostos** — `branch_name_pattern` (ruleset
-   "Convenção de Nomes de Ramificação"): um push para branch fora de `<tipo>/<slug>`
-   é **recusado na criação/atualização do ref**. Não é convenção escrita: é parede.
-8. **Mensagens convencionais impostas** — `commit_message_pattern` (ruleset
-   "Convenção de Mensagens de Commit"): o que entra em ramos protegidos (incluindo o
-   commit de squash) tem de começar por `tipo(escopo)!: descrição` ou `Revert `/`Reapply `.
+7. **Nomes de ramificação impostos** (portátil — qualquer plano) — regras
+   `creation` + `update` sobre **todas as refs exceto as que cumprem a convenção**
+   (lista de permitidos nos `exclude`, fnmatch). Um push para branch fora de
+   `<tipo>/<slug>` é **recusado na criação/atualização do ref**. Não é convenção
+   escrita: é parede.
+8. **Mensagens convencionais impostas** — no servidor via **status check
+   obrigatório `build`** (o job agregador do CI valida as mensagens; qualquer plano)
+   e, em planos **Enterprise**, ainda pela regra de metadata
+   `commit_message_pattern`. O que entra em ramos protegidos — incluindo o commit de
+   squash — tem de começar por `tipo(escopo)!: descrição` ou `Revert `/`Reapply `.
 
 ## Os 5 rulesets da skill (governança como código)
 
@@ -48,53 +52,81 @@ checks obrigatórios. Nenhum ruleset consegue *alargar* o que outro apertou.
 | `regras-main.json` | Governança Principal Restrita | PR obrigatório + squash-only + status checks strict + linear history + sem force-push + sem delete em `~DEFAULT_BRANCH`, `main`, `master`, `develop`, `release/**` |
 | `regras-release.json` | Ramos de Release Protegidos | `release/**` sem reescrita, PR com 1 aprovação |
 | `regras-tags.json` | Tags de Release Imutáveis | `refs/tags/v*` sem `update` nem `deletion` |
-| `regras-nomes-de-branch.json` | Convenção de Nomes de Ramificação | branches fora de `<tipo>/<slug>` **rejeitadas** (exceções: `dependabot/`, `renovate/`, `release-please--*`, `gh-readonly-queue/`; longevos `main`/`master`/`develop`/`gh-pages`/predefinido isentos do naming e protegidos de commits diretos) |
-| `regras-commits.json` | Convenção de Mensagens de Commit | mensagens fora de Conventional Commits **rejeitadas** em `~DEFAULT_BRANCH`, `main`, `master`, `develop`, `release/**` |
+| `regras-nomes-de-branch.json` | Convenção de Nomes de Ramificação | branches fora de `<tipo>/<slug>` **rejeitadas** — regras `creation`+`update` sobre refs não isentas (portátil a qualquer plano). Isentos: ramos longevos (`main`, `master`, `develop`, `gh-pages`, predefinido) e prefixos de automação (`dependabot/`, `renovate/`, `release-please--*`, `gh-readonly-queue/`) |
+| `regras-commits.json` | Convenção de Mensagens de Commit | mensagens fora de Conventional Commits **rejeitadas** em `~DEFAULT_BRANCH`, `main`, `master`, `develop`, `release/**` — regra de metadata `commit_message_pattern`, **GitHub Enterprise**. Sem Enterprise: o equivalente portátil é o hook `commit-msg` + o status check obrigatório `build` (CI) |
 
-O regex do ruleset de nomes e o regex do gate local são a **mesma política** — a fonte
-única vive em `scripts/oss-branch-policy.sh`; nunca alterar um sem o outro.
+O regex do gate local (`scripts/oss-branch-policy.sh`) é mais apertado que o fnmatch do
+ruleset (valida o slug): o ruleset corta no servidor o que é claramente errado; o gate e
+o doctor cortam o resto. Nunca alterar um sem o outro.
 
-## Regras de padrão: `negate` decide o sentido
+## Regras de padrão e `negate` (metadata restrictions — GitHub Enterprise)
 
 As regras `branch_name_pattern`, `commit_message_pattern`, `commit_author_email_pattern`,
-`committer_email_pattern` e `tag_name_pattern` partilham os parâmetros
-`operator` (`starts_with` | `ends_with` | `contains` | `regex`), `pattern` e `negate`,
-com a semântica oficial (**documentação REST do GitHub**):
+`committer_email_pattern` e `tag_name_pattern` são **metadata restrictions: só existem em
+organizações com plano Enterprise** (sem Enterprise, o POST responde
+`422 Invalid rule '<tipo>': `). Onde existirem, partilham os parâmetros `operator`
+(`starts_with` | `ends_with` | `contains` | `regex`), `pattern` e `negate`, com a
+semântica oficial (**documentação REST do GitHub**):
 
 > `negate` boolean — **If true, the rule will fail if the pattern matches.**
-
-Ou seja:
 
 | `negate` | A regra BLOQUEIA quando… | Uso |
 |---|---|---|
 | `false` (predefinição) | o padrão **não** corresponde | **impor** uma convenção (nomes/mensagens têm de bater certo) |
 | `true` | o padrão **corresponde** | **proibir** um formato (ex.: nomes que contenham `temp`) |
 
-Esta skill usa sempre `negate: false` para **impor** convenções. Exemplo real
-(`regras-nomes-de-branch.json`):
-
-```json
-{
-  "type": "branch_name_pattern",
-  "parameters": {
-    "name": "tipo/slug convencional obrigatório",
-    "negate": false,
-    "operator": "regex",
-    "pattern": "^((feat|fix|docs|style|refactor|perf|test|build|ci|revert|hotfix|release)/[a-zA-Z0-9][a-zA-Z0-9._/-]*|(dependabot|renovate)/[a-zA-Z0-9._/-]+|release-please--.*|gh-readonly-queue/.*)$"
-  }
-}
-```
-
 Cuidados de regex (RE2 — sem lookaround, sem backreferences):
 
 - `^…$` ancoram no nome/mensagem inteira; sem eles o padrão aceitaria prefixos sujos.
 - Em mensagens de commit, `.` **não** atravessa linhas: use `[\s\S]*` para consumir o
   corpo da mensagem depois do cabeçalho convencional (no JSON, `"[\\s\\S]*"`).
-- As exceções de automação **têm de estar no padrão**: `dependabot`/`renovate` criam
-  `<prefixo>/<ecossistema>/<pkg>`, `release-please` cria `release-please--branches--main`
-  e a merge queue usa `gh-readonly-queue/...`. Sem elas, a automação morre bloqueada.
-- Os ramos longevos (`main`, `master`, `develop`, `gh-pages`, predefinido) não seguem
-  `<tipo>/<slug>`: ficam nos `exclude` das condições do ruleset — nunca no regex.
+- As exceções de automação **têm de estar no padrão**.
+
+## O truque portátil: `creation` + `update` + lista de permitidos nos `exclude`
+
+Sem Enterprise, a imposição de nomes faz-se com regras que **todos os planos** têm.
+A ideia: o ruleset incide sobre as refs que **NÃO** cumprem a convenção e proíbe
+criá-las/atualizá-las. Como o fnmatch do GitHub **não tem negação** (`File::FNM_EXTGLOB`
+não é suportado — nada de `!(...)`), a lista dos **nomes permitidos** vai nos `exclude`
+das condições:
+
+```json
+{
+  "name": "Convenção de Nomes de Ramificação",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~ALL"],
+      "exclude": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/main", "refs/heads/master", "refs/heads/develop", "refs/heads/gh-pages",
+        "refs/heads/feat/*", "refs/heads/feat/**/*",
+        "refs/heads/fix/*", "refs/heads/fix/**/*"
+      ]
+    }
+  },
+  "rules": [
+    { "type": "creation" },
+    { "type": "update", "parameters": { "update_allows_fetch_and_merge": false } }
+  ],
+  "bypass_actors": []
+}
+```
+
+Regras de fnmatch (**`File::FNM_PATHNAME`**): `*` **não** cruza `/` — por isso cada
+prefixo precisa de DOIS padrões: `refs/heads/feat/*` (1 nível) e `refs/heads/feat/**/*`
+(profundidade ≥ 2, ex.: `feat/a/b`). `~ALL` e `~DEFAULT_BRANCH` são os únicos tokens
+sem prefixo de ref.
+
+Confirme sem tocar em nada — `gh ruleset check` diz quantas regras incidem num nome
+(0 = livre; `creation`+`update` = bloqueado):
+
+```bash
+gh ruleset check feat/refresh-token   # 0 rules apply  → livre
+gh ruleset check Feature/XPTO         # 2 rules apply  → BLOQUEADO
+gh ruleset check main                 # só as regras do cofre (5) → naming isento
+```
 
 ## Envelope JSON — completo e válido
 
@@ -246,8 +278,8 @@ normal. Nunca `bypass_actors` para humanos, nem aqui.
 | `409` / "already exists" | ruleset com o mesmo nome ou regra duplicada | atualizar com `PUT` no `id` em vez de `POST` |
 | Regra não bloqueia | ruleset sobreposto em `disabled`/`evaluate` | `gh ruleset list` e subir tudo para `active` |
 | Bot de release bloqueado | `bypass_actors` sem o `Integration` certo | adicionar `actor_type: Integration` com o `actor_id` da app |
-| Push de branch recusado (`ref updates cannot be rejected...`) | regra `branch_name_pattern` e o nome fora de `<tipo>/<slug>` | renomear: `git branch -m <tipo>/<slug>` e voltar a dar push |
-| Commit recusado no merge/push | regra `commit_message_pattern` e mensagem fora de Conventional Commits | reescrever a mensagem (`git commit --amend`) ou titule o PR Convencionalmente (squash) |
+| Push de branch recusado (`ref updates cannot be rejected...`) | regras `creation`/`update` do ruleset de nomes e o nome fora de `<tipo>/<slug>` | renomear: `git branch -m <tipo>/<slug>` e voltar a dar push |
+| Commit recusado no merge/push | mensagem fora de Conventional Commits (status check `build` bloqueia; em Enterprise, a regra `commit_message_pattern`) | reescrever a mensagem (`git commit --amend`) ou titule o PR Convencionalmente (squash) |
 | Bot (dependabot/release-please) bloqueado | nome/mensagem do bot fora do padrão imposto | nomes: prefixos de automação já estão no regex; mensagens: `commit-message: prefix: "chore(deps)"` no `dependabot.yml` |
 
 ## Ordem de instalação recomendada

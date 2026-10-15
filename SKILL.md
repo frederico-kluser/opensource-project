@@ -196,7 +196,8 @@ inválida → reescrever com o formato; versão incoerente → recalcular com `o
   hotfixes, convenção FECHADA de nomes de branch.
 - `references/releases-e-semver.md` — SemVer, semantic-release vs release-please vs git-cliff.
 - `references/rulesets-e-protecao.md` — GitHub Rulesets, JSON de governança, nomes de
-  branch e mensagens de commit impostos no servidor, semântica de `negate`, tags imutáveis.
+  branch impostos no servidor (portátil: `creation`+`update`), mensagens de commit
+  (status check obrigatório + metadata Enterprise), semântica de `negate`, tags imutáveis.
 - `references/seguranca-openssf.md` — Scorecard ≥ 7, least privilege, SHA pinning, secrets.
 - `references/github-actions-automacoes.md` — automações completas: gatilhos, matrix,
   cache/artifacts, reusable workflows, ambientes/secrets/OIDC, segurança, custos,

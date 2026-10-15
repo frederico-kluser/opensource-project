@@ -216,7 +216,7 @@ else
     else
       MISSING_RS=0
       for n in "Governança Principal Restrita" "Ramos de Release Protegidos" "Tags de Release Imutáveis" \
-               "Convenção de Nomes de Ramificação" "Convenção de Mensagens de Commit"; do
+               "Convenção de Nomes de Ramificação"; do
         if printf '%s\n' "$RULES" | grep -Fxq "$n"; then
           ok "ruleset ativo: $n"
         else
@@ -224,6 +224,11 @@ else
           MISSING_RS=$((MISSING_RS+1))
         fi
       done
+      if printf '%s\n' "$RULES" | grep -Fxq "Convenção de Mensagens de Commit"; then
+        ok "ruleset ativo: Convenção de Mensagens de Commit (metadata — Enterprise)"
+      else
+        warn "sem ruleset \"Convenção de Mensagens de Commit\" — regras de metadata são GitHub Enterprise; o equivalente portátil (hook commit-msg + status check 'build') cobre a convenção"
+      fi
       [ "$MISSING_RS" -gt 0 ] && info "Solução: bash $SKILL_DIR/scripts/oss-enforce.sh — cria e reconcilia os rulesets automaticamente"
     fi
     VIOL_R=0
