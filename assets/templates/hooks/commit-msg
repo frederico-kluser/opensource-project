@@ -1,0 +1,62 @@
+#!/bin/sh
+# oss-hooks: commit-msg — regra LOCAL em qualquer projeto: Commits Convencionais.
+#   · cabeçalho `tipo(escopo)!: descrição`, tipos fechados, ≤ 72 chars (o sufixo
+#     "(#N)" do squash do GitHub não conta)
+#   · mensagens geradas pelo git (Merge/Revert/Reapply/fixup!/squash!) passam
+# Marcado com "# oss-hooks:" — gerido por scripts/oss-hooks.sh. STANDALONE: sem a
+# skill instalada, valida com a cópia embutida aqui em baixo.
+# Opt-out por repositório (auditável): git config oss.policy off
+set -u
+
+case "$(git config --get oss.policy 2>/dev/null || true)" in
+  off|disabled|false|0) exit 0 ;;
+esac
+case "${OSS_POLICY:-}" in
+  off|disabled|false|0) exit 0 ;;
+esac
+
+MSG_FILE="${1:-}"
+[ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ] || exit 0
+
+# --- encadeamento (instalação --global): corre também o hook LOCAL do repo ---
+_self_dir="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)"
+_local_hooks="$(git rev-parse --git-dir 2>/dev/null)/hooks"
+if [ -n "${_local_hooks:-}" ] && [ "$_self_dir" != "$_local_hooks" ]; then
+  _local="$_local_hooks/commit-msg"
+  if [ -x "$_local" ] && [ "$_local" != "$0" ]; then
+    "$_local" "$@" || exit $?
+  fi
+fi
+
+# --- gate completo da skill quando existe (fonte única da validação) ---
+for _d in "{{SKILL_ROOT}}" \
+          "${HOME:-}/.dsh/skills/opensource-project" \
+          "${HOME:-}/.agents/skills/opensource-project" \
+          "${HOME:-}/.claude/skills/opensource-project" \
+          "${HOME:-}/.codex/skills/opensource-project" \
+          "${HOME:-}/.pi/skills/opensource-project" \
+          "${HOME:-}/.jcode/skills/opensource-project"; do
+  if [ -n "${_d:-}" ] && [ -f "$_d/scripts/oss-gate.sh" ]; then
+    exec bash "$_d/scripts/oss-gate.sh" commit-msg "$MSG_FILE"
+  fi
+done
+
+# --- fallback embutido (sem skill): mesma política, validação mínima ---
+subject="$(head -1 "$MSG_FILE" 2>/dev/null || true)"
+case "$subject" in
+  "Merge "*|"Revert \""*|"Reapply \""*|"fixup!"*|"squash!"*) exit 0 ;;
+esac
+if [ -z "$subject" ]; then
+  printf 'Erro: mensagem de commit vazia — Solução: tipo(escopo)!: descrição (ex.: fix(auth): corrige validação de token)\n' >&2
+  exit 1
+fi
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]*\))?!?: .+'; then
+  printf 'Erro: mensagem fora de Conventional Commits: "%s" — Solução: tipo(escopo)!: descrição (tipos: feat fix docs style refactor perf test build ci chore revert)\n' "$subject" >&2
+  exit 1
+fi
+header="$(printf '%s' "$subject" | sed -E 's/ \(#[0-9]+\)$//')"
+if [ "${#header}" -gt 72 ]; then
+  printf 'Erro: cabeçalho com %s chars (máx. 72) — Solução: encurte a descrição\n' "${#header}" >&2
+  exit 1
+fi
+exit 0

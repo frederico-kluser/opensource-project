@@ -55,6 +55,7 @@ bash scripts/link-skill-global.sh   # liga nos 12 skill roots da máquina (--che
 
 ```bash
 bash scripts/oss-enforce.sh                                 # Reentry: reverifica e aplica o que falta
+bash scripts/oss-hooks.sh install --global                  # regras LOCAIS em qualquer projeto (hooks)
 bash scripts/oss-doctor.sh                                  # diagnóstico da governança
 bash scripts/oss-scaffold.sh --target . --owner acme --license mit
 bash scripts/oss-gate.sh commit-msg "$1"                    # Gate 1 (hook)

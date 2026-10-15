@@ -17,7 +17,8 @@
    curto em kebab-case (`feat/refresh-token`). Exceções: apenas prefixos de
    automação (`dependabot/*`, `renovate/*`, `release-please--*`,
    `gh-readonly-queue/*`). Fora disso o GitHub **rejeita a branch** (ruleset
-   "Convenção de Nomes de Ramificação") — valide com
+   "Convenção de Nomes de Ramificação") e o hook **`pre-push` local bloqueia o push**
+   antes de ele existir — valide com
    `bash /home/ondokai/Agent-Skills/opensource-project/scripts/oss-gate.sh branch <nome>`.
 3. **Commits Convencionais**: `tipo(escopo)!: descrição` — imperativo, ≤ 72 chars.
    Tipos: `feat fix docs style refactor perf test build ci chore revert`.
@@ -51,6 +52,11 @@ O `oss-enforce.sh` é idempotente e não-destrutivo: cria a fundação em falta
 (ficheiros, hooks), **cria** os rulesets ausentes e **reconcilia** os divergentes no
 GitHub, ativa o Push Protection e audita nomes de branch. Corre **sem pedir nada**,
 no início de qualquer tarefa de governança e antes de fechar qualquer trabalho.
+
+As regras também vivem **localmente** (sem GitHub): os hooks `pre-push` + `commit-msg`
+instalados por `bash /home/ondokai/Agent-Skills/opensource-project/scripts/oss-hooks.sh install` impõem nomes
+`<tipo>/<slug>`, proíbem push direto para ramos protegidos e validam Commits
+Convencionais nesta máquina — qualquer projeto, qualquer remoto.
 
 ## Procedimento por pedido do utilizador (executar sem pedir estes passos)
 

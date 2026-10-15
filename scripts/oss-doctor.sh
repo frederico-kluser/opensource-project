@@ -88,12 +88,19 @@ fi
 check_file .github/PULL_REQUEST_TEMPLATE.md "Template de PR" warn
 if has .github/ISSUE_TEMPLATE; then ok "templates de issues"; else warn "templates de issues em falta (.github/ISSUE_TEMPLATE)"; fi
 
-head_ "Filtros sintáticos locais (Gate 1)"
-if has .husky/commit-msg || has .git/hooks/commit-msg; then
-  ok "hook commit-msg instalado"
-else
-  warn "hook commit-msg em falta — mensagens inválidas passam sem travão (references/commits-convencionais.md)"
-fi
+head_ "Regras locais — hooks git (Gate 1/2)"
+HOOKS_DIR="$(git rev-parse --git-common-dir 2>/dev/null)/hooks"
+for h in pre-push commit-msg; do
+  f="$HOOKS_DIR/$h"
+  if [ -x "$f" ]; then
+    if grep -q "# oss-hooks:" "$f" 2>/dev/null; then ok "hook $h instalado (nomes de branch · ramos protegidos · commits)"
+    else warn "hook $h alheio (fora da governança): $f — a política local não corre aqui"; fi
+  elif [ -x ".husky/$h" ]; then
+    ok "hook $h instalado (.husky — husky)"
+  else
+    bad "hook $h em falta — sem ele a regra local não corre nesta máquina — Solução: bash $SKILL_DIR/scripts/oss-hooks.sh install"
+  fi
+done
 if has commitlint.config.js || has commitlint.config.cjs || has .commitlintrc.json; then
   ok "commitlint configurado"
 else

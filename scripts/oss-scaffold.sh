@@ -15,7 +15,7 @@
 #   --contact EMAIL       contacto de segurança (predef.: security@<owner>.example)
 #   --release-engine X    release-please | semantic-release | none (predef.: release-please)
 #   --with-tests          acrescenta o pipeline de testes com matrix (assets/workflows/tests.yml)
-#   --install-hook        instala hook git commit-msg que invoca oss-gate.sh
+#   --install-hook        instala os hooks git locais (pre-push + commit-msg) via oss-hooks.sh
 #   --force               sobrescreve ficheiros já existentes
 #   --dry-run             mostra o plano sem escrever
 #
@@ -185,21 +185,20 @@ if [ -e "$TARGET/package.json" ]; then
   render "$ASSETS/templates/husky-pre-commit" ".husky/pre-commit"
   [ "$DRY" -eq 0 ] && chmod +x "$TARGET/.husky/commit-msg" "$TARGET/.husky/pre-commit" 2>/dev/null
   printf '  [INFO] acrescente ao package.json: "prepare": "husky" + devDeps (ver assets/templates/package-husky-fragment.json)\n'
-elif [ "$HOOK" -eq 1 ]; then
-  if [ -e "$TARGET/.git/hooks/commit-msg" ] && [ "$FORCE" -eq 0 ] \
-     && grep -q "oss-gate.sh" "$TARGET/.git/hooks/commit-msg" 2>/dev/null; then
-    printf '  [IGNORADO]    .git/hooks/commit-msg (já invoca oss-gate.sh; use --force)\n'; IGNORADO=$((IGNORADO+1))
-  elif [ "$DRY" -eq 1 ]; then
-    printf '  [CRIARIA]     .git/hooks/commit-msg (oss-gate.sh commit-msg)\n'
+elif [ "$HOOK" -eq 0 ]; then
+  printf '  [INFO] sem package.json: use --install-hook para os hooks git locais ou configure husky/commitlint no seu stack\n'
+fi
+
+echo "-- Regras locais (hooks pre-push + commit-msg) --"
+if [ "$HOOK" -eq 1 ] || [ -e "$TARGET/package.json" ]; then
+  if [ "$DRY" -eq 1 ]; then
+    printf '  [CRIARIA]     hooks locais via oss-hooks.sh (nomes de branch · ramos protegidos · commits)\n'
   else
-    mkdir -p "$TARGET/.git/hooks"
-    printf '#!/bin/sh\nexec bash "%s/scripts/oss-gate.sh" commit-msg "$1"\n' "$SKILL_DIR" > "$TARGET/.git/hooks/commit-msg"
-    chmod +x "$TARGET/.git/hooks/commit-msg"
-    printf '  [CRIADO]      .git/hooks/commit-msg (não versionado; repita em cada clone ou use husky)\n'
-    CRIADO=$((CRIADO+1))
+    bash "$SKILL_DIR/scripts/oss-hooks.sh" install --target "$TARGET" || \
+      printf '  [AVISO] oss-hooks.sh falhou — corra: bash "%s/scripts/oss-hooks.sh" install --target "%s"\n' "$SKILL_DIR" "$TARGET"
   fi
 else
-  printf '  [INFO] sem package.json: use --install-hook para o hook git local ou configure husky/commitlint no seu stack\n'
+  printf '  [INFO] hooks locais: bash "%s/scripts/oss-hooks.sh" install --target "%s"\n' "$SKILL_DIR" "$TARGET"
 fi
 
 echo
