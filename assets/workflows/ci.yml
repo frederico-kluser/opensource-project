@@ -84,3 +84,39 @@ jobs:
       #   with:
       #     files: ./coverage/lcov.info
       #     fail_ci_if_error: true
+
+  # Job AGREGADOR — o seu NOME (`build`) é o `context` exigido pelo ruleset
+  # (assets/rulesets/regras-main.json). Não renomeie sem atualizar o ruleset.
+  # Além de agregar lint+test, valida as mensagens de commit: é assim que os
+  # Conventional Commits são impostos TAMBÉM no servidor — a regra de metadata
+  # `commit_message_pattern` é Enterprise-only, enquanto este check funciona em
+  # qualquer plano e bloqueia o merge com mensagens fora do padrão.
+  build:
+    name: build
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@<PIN_SHA> # v4.2.2
+
+      - name: Commits convencionais (últimos 25)
+        run: |
+          python3 - <<'PY'
+          import re, subprocess, sys
+          header = re.compile(r'^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]*\))?!?: .+')
+          skip = re.compile(r'^(Merge |Revert "|Reapply "|fixup!|squash!)')
+          out = subprocess.run(['git', 'log', '--pretty=tformat:%s', '-n', '25', 'HEAD'],
+                               capture_output=True, text=True).stdout
+          bad = 0
+          for s in out.splitlines():
+              s = s.strip()
+              if not s or skip.match(s):
+                  continue
+              h = re.sub(r'\s+\(#\d+\)$', '', s)   # sufixo "(#N)" do squash não conta
+              if not header.match(h) or len(h) > 72:
+                  print('ERRO: mensagem fora de Conventional Commits:', s); bad = 1
+              else:
+                  print('OK  :', s)
+          sys.exit(bad)
+          PY

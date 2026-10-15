@@ -27,9 +27,12 @@
 #        · "Ramos de Release Protegidos"         — release/** sem reescrita;
 #        · "Tags de Release Imutáveis"           — v* intocáveis;
 #        · "Convenção de Nomes de Ramificação"   — branch fora de <tipo>/<slug> é
-#          REJEITADA pelo GitHub (não só pelo agente);
-#        · "Convenção de Mensagens de Commit"    — Conventional Commits imposto
-#          também no servidor, para commits que entram em ramos protegidos.
+#          REJEITADA pelo GitHub: regras `creation`+`update` sobre refs que não
+#          batem certo com a lista de permitidos (fnmatch, portátil a qualquer plano);
+#        · "Convenção de Mensagens de Commit"    — Conventional Commits imposto no
+#          servidor por regra de metadata (`commit_message_pattern`) — GitHub
+#          Enterprise; sem Enterprise, o equivalente portátil está ativo: hook
+#          commit-msg + status check obrigatório `build` (CI valida mensagens).
 #   3. Push Protection — ativa a proteção de segredos se estiver desligada.
 #   4. Auditoria de nomes — lista branches existentes fora da convenção (a regra
 #      nova impede atualizá-las; renomear ou apagar é a cura).
@@ -190,11 +193,17 @@ for r in data:
       if [ "$DRY" -eq 1 ]; then
         info "[CRIARIA]     ruleset \"$name\" ($f)"
         CRIADOS=$((CRIADOS+1))
-      elif gh api --method POST "repos/$OWNER/$REPO/rulesets" --input "$src" >/dev/null 2>&1; then
-        ok "ruleset CRIADO: \"$name\" ($f)"
-        CRIADOS=$((CRIADOS+1))
       else
-        bad "falha ao criar o ruleset \"$name\" — Solução: gh api --method POST repos/$OWNER/$REPO/rulesets --input $src (precisa de admin no repo)"
+        out="$(gh api --method POST "repos/$OWNER/$REPO/rulesets" --input "$src" 2>&1)"; rc=$?
+        if [ "$rc" -eq 0 ]; then
+          ok "ruleset CRIADO: \"$name\" ($f)"
+          CRIADOS=$((CRIADOS+1))
+        elif printf '%s' "$out" | grep -q "Invalid rule"; then
+          warn "ruleset \"$name\" usa regras indisponíveis neste plano — as regras de metadata (padrões de nomes/mensagens) são GitHub Enterprise"
+          info "mecanismo portátil já ativo no lugar: hook commit-msg + status check obrigatório 'build' (CI valida mensagens) + gate local oss-gate.sh"
+        else
+          bad "falha ao criar o ruleset \"$name\" — Solução: gh api --method POST repos/$OWNER/$REPO/rulesets --input $src (precisa de admin no repo)"
+        fi
       fi
     else
       cur="$(mktemp)"
@@ -207,11 +216,17 @@ for r in data:
         if [ "$DRY" -eq 1 ]; then
           info "[ATUALIZARIA] ruleset \"$name\" (id $rid) diverge de $f"
           ATUALIZADOS=$((ATUALIZADOS+1))
-        elif gh api --method PUT "repos/$OWNER/$REPO/rulesets/$rid" --input "$src" >/dev/null 2>&1; then
-          ok "ruleset RECONCILIADO: \"$name\" (id $rid) — agora igual a $f"
-          ATUALIZADOS=$((ATUALIZADOS+1))
         else
-          bad "falha ao reconciliar o ruleset \"$name\" — Solução: gh api --method PUT repos/$OWNER/$REPO/rulesets/$rid --input $src"
+          out="$(gh api --method PUT "repos/$OWNER/$REPO/rulesets/$rid" --input "$src" 2>&1)"; rc=$?
+          if [ "$rc" -eq 0 ]; then
+            ok "ruleset RECONCILIADO: \"$name\" (id $rid) — agora igual a $f"
+            ATUALIZADOS=$((ATUALIZADOS+1))
+          elif printf '%s' "$out" | grep -q "Invalid rule"; then
+            warn "ruleset \"$name\" (id $rid) diverge e a regra pretendida é indisponível neste plano (metadata restrictions = GitHub Enterprise)"
+            info "mecanismo portátil ativo: hook commit-msg + status check obrigatório 'build' (CI valida mensagens)"
+          else
+            bad "falha ao reconciliar o ruleset \"$name\" — Solução: gh api --method PUT repos/$OWNER/$REPO/rulesets/$rid --input $src"
+          fi
         fi
       fi
       rm -f "$cur"

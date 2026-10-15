@@ -21,8 +21,9 @@
    `bash /home/ondokai/Agent-Skills/opensource-project/scripts/oss-gate.sh branch <nome>`.
 3. **Commits Convencionais**: `tipo(escopo)!: descrição` — imperativo, ≤ 72 chars.
    Tipos: `feat fix docs style refactor perf test build ci chore revert`.
-   `!` ou rodapé `BREAKING CHANGE:` → versão MAJOR. Imposto também no **servidor**
-   (ruleset "Convenção de Mensagens de Commit") para o que entra em ramos protegidos.
+   `!` ou rodapé `BREAKING CHANGE:` → versão MAJOR. Imposto também **no servidor**:
+   o status check obrigatório `build` valida as mensagens (e, em planos Enterprise,
+   o ruleset "Convenção de Mensagens de Commit").
 4. **A versão é cálculo, nunca digitação**:
    `python3 /home/ondokai/Agent-Skills/opensource-project/scripts/oss-version.py next` (`feat`→MINOR, `fix`→PATCH,
    `!`→MAJOR). Bump manual só com justificação explícita do utilizador.
@@ -78,9 +79,10 @@ no início de qualquer tarefa de governança e antes de fechar qualquer trabalho
 `main` (e `master`, `develop`, `release/**`) é cofre por
 ruleset: PR obrigatório, squash-only, status checks strict, histórico linear, sem
 force-push, sem delete — **commits diretos são recusados pelo GitHub**. Os nomes de
-branch seguem `<tipo>/<slug>` e as mensagens Convencionais são impostas também no
-servidor. Tags `v*` são imutáveis. Releases nunca retrocedem: reverter um
-`BREAKING CHANGE` publicado exige um novo MAJOR.
+branch seguem `<tipo>/<slug>` — **o GitHub rejeita os restantes** — e as mensagens
+Convencionais são impostas também no servidor (status check `build`). Tags `v*` são
+imutáveis. Releases nunca retrocedem: reverter um `BREAKING CHANGE` publicado exige
+um novo MAJOR.
 
 ## Semântica de erro
 

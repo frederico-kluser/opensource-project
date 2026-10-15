@@ -14,8 +14,9 @@ empiricamente** contra ela (`required_approving_review_count`, `require_code_own
 `require_extra_approval_for_unattributed_changes`, `required_review_thread_resolution`,
 `required_reviewers`, `allowed_merge_methods`, `required_status_checks` com
 `strict_required_status_checks_policy`, `do_not_enforce_on_create`, `required_linear_history`,
-`branch_name_pattern`/`commit_message_pattern` com `operator`/`pattern`/`negate` e,
-opcionalmente, `integration_id` por check). Quatro regras duras:
+`creation`/`update` para imposição de nomes e — em planos Enterprise —
+`branch_name_pattern`/`commit_message_pattern` com `operator`/`pattern`/`negate`; e,
+opcionalmente, `integration_id` por check). Cinco regras duras:
 
 1. **Padrões são refs completas**: `refs/heads/...` para branches, `refs/tags/...` para
    tags. Padrões soltos (`release/**`, `v*`, `main`) são rejeitados com
@@ -27,11 +28,17 @@ opcionalmente, `integration_id` por check). Quatro regras duras:
 3. **Nunca usar a chave `params`** (sem `-eters`): a API aceita-a e **ignora-a
    silenciosamente** — o ruleset fica criado com valores por omissão. Confirme com
    `gh api repos/{owner}/{repo}/rulesets/<id>` que os valores persistiram.
-4. **`negate` das regras de padrão inverte o sentido**: `negate: false` (predefinição)
-   faz a regra **falhar quando o padrão NÃO corresponde** — é assim que se **impõe** uma
-   convenção (nomes de branch, mensagens de commit). `negate: true` bloqueia quando o
-   padrão corresponde (usar para proibir formatos). Documentação REST: *"If true, the
-   rule will fail if the pattern matches."*
+4. **As regras de metadata são Enterprise-only** (`branch_name_pattern`,
+   `commit_message_pattern`, `commit_author_email_pattern`, `committer_email_pattern`,
+   `tag_name_pattern`): sem plano Enterprise numa organização, o POST responde
+   `422 Invalid rule '<tipo>': `. Onde existirem, `negate` inverte o sentido:
+   `negate: false` faz a regra **falhar quando o padrão NÃO corresponde** (impor
+   convenções); `negate: true` bloqueia quando corresponde (proibir formatos) —
+   documentação REST: *"If true, the rule will fail if the pattern matches."*
+5. **O fnmatch das condições não tem negação** (`File::FNM_PATHNAME`, sem
+   `File::FNM_EXTGLOB`) e `*` **não** cruza `/`: para impor nomes em qualquer plano,
+   use as regras `creation` + `update` com a lista de **permitidos** nos `exclude`
+   (dois padrões por prefixo: `refs/heads/feat/*` e `refs/heads/feat/**/*`).
 
 Os corpos em JSON não têm comentários — as explicações ficam aqui.
 
@@ -42,8 +49,8 @@ Os corpos em JSON não têm comentários — as explicações ficam aqui.
 | `regras-main.json`    | `branch`       | `~DEFAULT_BRANCH`, `main`, `master`, `develop` e `refs/heads/release/**`: sem delete, sem force-push, histórico linear, PR com **2 aprovações**, code owner review, aprovações caducadas em push novo, merge só por **squash**, status checks obrigatórios (strict). **Commits diretos recusados.** |
 | `regras-tags.json`    | `tag`          | Tags `refs/tags/v*` **imutáveis**: proibidos `update` e `deletion`.                                    |
 | `regras-release.json` | `branch`       | Ramos `refs/heads/release/**`: sem delete, sem force-push, histórico linear, PR com **1 aprovação**.   |
-| `regras-nomes-de-branch.json` | `branch` | **REJEITA** branches fora de `<tipo>/<slug>` (`branch_name_pattern`, `negate: false`). Isentos: ramos longevos (`main`, `master`, `develop`, `gh-pages`, predefinido — nos `exclude`); exceções no regex: `dependabot/`, `renovate/`, `release-please--*`, `gh-readonly-queue/`. |
-| `regras-commits.json` | `branch`       | **REJEITA** mensagens fora de Conventional Commits (`commit_message_pattern`, `negate: false`) no ramo predefinido, `main`, `master`, `develop`, `release/**` — incluindo o commit de squash. Permite cabeçalho `tipo(escopo)!: …` e `Revert `/`Reapply `. |
+| `regras-nomes-de-branch.json` | `branch` | **REJEITA** branches fora de `<tipo>/<slug>` — regras `creation` + `update` sobre todas as refs **exceto** as que cumprem a convenção (permitidos nos `exclude`, fnmatch; portátil a qualquer plano). Isentos: ramos longevos (`main`, `master`, `develop`, `gh-pages`, predefinido) e prefixos de automação (`dependabot/`, `renovate/`, `release-please--*`, `gh-readonly-queue/`). |
+| `regras-commits.json` | `branch` | **REJEITA** mensagens fora de Conventional Commits (`commit_message_pattern`, `negate: false`) no ramo predefinido, `main`, `master`, `develop`, `release/**`. **Regra de metadata — GitHub Enterprise.** Sem Enterprise, o equivalente portátil: hook `commit-msg` + status check obrigatório `build` (valida mensagens no CI). |
 
 Notas:
 
