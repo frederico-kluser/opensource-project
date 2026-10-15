@@ -181,7 +181,7 @@ gate_push() {
       if ! check_commit_subject "$subj" && ! printf '%s' "$subj" | grep -Eq '^(Merge |Revert "|fixup!|squash!)'; then
         bad "commit fora do padrão: '$subj'"; bad_msgs=$((bad_msgs+1))
       fi
-    done < <(git log --pretty=format:'%s' "$range" 2>/dev/null)
+    done < <(git log --pretty=tformat:'%s' "$range" 2>/dev/null)
     if [ "$total" -eq 0 ]; then
       info "nada para enviar acima da base"
     elif [ "$bad_msgs" -eq 0 ]; then
