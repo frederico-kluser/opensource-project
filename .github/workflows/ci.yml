@@ -67,6 +67,9 @@ jobs:
             python3 scripts/oss-version.py check-msg "$s" || exit 1
           done
 
+      - name: Instalar regras locais (hooks)
+        run: bash scripts/oss-hooks.sh install
+
       - name: Doctor de governança (local)
         run: bash scripts/oss-doctor.sh --local
 
