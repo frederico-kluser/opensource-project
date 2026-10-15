@@ -30,6 +30,8 @@ plataforma que as tornam invioláveis.
 - "força as regras no GitHub", "proíbe commits diretos em main/develop/release",
   "impõe nomes de branch", "nome de branch errado", "branch naming".
 - "verifica se está tudo", "aplica o que falta", "o projeto já usa a skill mas…".
+- "regra local", "hooks locais", "pre-push", "commit-msg", "protege sem GitHub",
+  "em qualquer projeto", "na minha máquina".
 - "automações do GitHub Actions", "pipeline de testes", "CI/CD", "workflow", "matrix",
   "cache/artifacts", "reusable workflows", "CodeQL", "dependabot", "agendamentos".
 - "que licença uso?", "README com badges", "CONTRIBUTING", "SECURITY.md".
@@ -76,6 +78,27 @@ Sem perguntas, sem exceções, no início de qualquer tarefa de governança e an
 fechar qualquer trabalho. `--dry-run` mostra o plano; `--local` limita ao que é do
 repositório.
 
+## Regras locais — qualquer projeto, sem depender do GitHub (hooks git)
+
+A convenção também vive na **máquina**: `scripts/oss-hooks.sh` instala os hooks
+`pre-push` + `commit-msg` que impõem **nomes `<tipo>/<slug>`**, **proíbem push direto
+para ramos protegidos** (`main`, `master`, `develop`, `release/**`, predefinido) e
+validam **Commits Convencionais** — offline, em qualquer remoto ou sem remoto nenhum.
+O `pre-push` é o último momento local onde um nome mau ainda é apanhado.
+
+- **Por projeto** (predefinição; automático via `oss-enforce.sh`): instala em
+  `<repo>/.git/hooks/` e, com husky, também em `.husky/`.
+- **`--global`** — `bash scripts/oss-hooks.sh install --global` aponta o
+  `core.hooksPath` GLOBAL do git para `~/.config/opensource-project/hooks`: passa a
+  valer em **QUALQUER projeto da máquina**. Os hooks locais do repositório são
+  **encadeados primeiro** (nunca substituem nada); opt-out por repositório (auditável):
+  `git config oss.policy off`.
+- **Não-destruição**: hooks alheios nunca são tocados ([IGNORADO] + aviso); os geridos
+  levam a marca `# oss-hooks:` e são **atualizados** quando a política muda.
+- Verificação: `bash scripts/oss-hooks.sh check [--global]` (o `oss-doctor.sh` também).
+- Os hooks são **standalone**: sem a skill instalada usam a política embutida no
+  ficheiro (a fonte única `scripts/oss-branch-policy.sh` é usada quando existe).
+
 ## Comportamento embutido no projeto (a skill não precisa de ser chamada)
 
 A partir do momento em que `oss-scaffold.sh` governa um projeto, ele planta
@@ -121,9 +144,9 @@ necessária para instalar/renovar o contrato e para os comandos dos gates.
    PR (o CI reforça; o gate local poupa ciclos).
 11. **Nomes de ramificação SEM DÓ**: `<tipo>/<slug>` com o conjunto fechado
    `feat fix docs style refactor perf test build ci revert hotfix release`. O GitHub
-   **rejeita** o resto (ruleset) — e o gate local bloqueia antes do push. Humanos nunca
-   usam os prefixos de automação (`dependabot/`, `renovate/`, `release-please--*`,
-   `gh-readonly-queue/`).
+   **rejeita** o resto (ruleset) — e o hook `pre-push` local bloqueia antes do push,
+   em qualquer projeto (`oss-hooks.sh`). Humanos nunca usam os prefixos de automação
+   (`dependabot/`, `renovate/`, `release-please--*`, `gh-readonly-queue/`).
 12. **Reentry obrigatória**: toda a entrada num projeto — mesmo que já use a skill —
    começa por `oss-enforce.sh`, que verifica TUDO e coloca o que falta. Nunca assumir
    que está tudo lá; nunca pedir confirmação para esta verificação.
@@ -149,7 +172,8 @@ necessária para instalar/renovar o contrato e para os comandos dos gates.
 
 | Ferramenta | Faz | Exemplo |
 |---|---|---|
-| `scripts/oss-enforce.sh` | **Reentry**: verifica TUDO e aplica o que falta — fundação local, rulesets no GitHub (cria ausentes · reconcilia divergentes), push protection, auditoria de nomes de branch. Idempotente, sem perguntas | `bash scripts/oss-enforce.sh` (opções: `--dry-run`, `--local`) |
+| `scripts/oss-enforce.sh` | **Reentry**: verifica TUDO e aplica o que falta — fundação local, regras locais (hooks), rulesets no GitHub (cria ausentes · reconcilia divergentes), push protection, auditoria de nomes de branch. Idempotente, sem perguntas | `bash scripts/oss-enforce.sh` (opções: `--dry-run`, `--local`) |
+| `scripts/oss-hooks.sh` | **Regras locais** em qualquer projeto: `pre-push` + `commit-msg` (nomes de branch, ramos protegidos, Conventional Commits) — por projeto ou `--global` via `core.hooksPath` | `bash scripts/oss-hooks.sh install --global` · `check` · `uninstall` |
 | `scripts/oss-doctor.sh` | Diagnóstico READ-ONLY da governança (ficheiros, hooks, workflows, permissions, actions pinnadas, rulesets por nome, nomes de branch, auth) | `bash scripts/oss-doctor.sh` |
 | `scripts/oss-scaffold.sh` | Scaffolding idempotente dos ficheiros de governança a partir de `assets/` | `bash scripts/oss-scaffold.sh --target . --owner acme --license mit --holder "Acme"` |
 | `scripts/oss-gate.sh` | Gates por ação; exit 1 se algum bloquear | `bash scripts/oss-gate.sh push --branch feat/x` |

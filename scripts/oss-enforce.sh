@@ -116,6 +116,11 @@ if bash "$SKILL_DIR/scripts/oss-scaffold.sh" "${SCAFFOLD_ARGS[@]}"; then
 else
   bad "oss-scaffold.sh falhou — Solução: corra bash $SKILL_DIR/scripts/oss-scaffold.sh --target $TARGET e leia o erro"
 fi
+if bash "$SKILL_DIR/scripts/oss-hooks.sh" install --target "$TARGET" >/dev/null 2>&1; then
+  ok "regras LOCAIS em vigor (hooks: nomes de branch · ramos protegidos · Conventional Commits)"
+else
+  bad "hooks locais em falta — Solução: bash $SKILL_DIR/scripts/oss-hooks.sh install --target $TARGET"
+fi
 
 # ---------------------------------------------------------------------------
 # 2. Rulesets GitHub — criar ausentes, reconciliar divergentes
