@@ -1,17 +1,21 @@
 # Rulesets — governança por API do GitHub
 
-Os ficheiros `.json` desta pasta **não são copiados** para o repositório do projeto: são corpos de
-pedido para o endpoint `POST /repos/{owner}/{repo}/rulesets` da REST API do GitHub, aplicados pelo
-agente depois do primeiro push (os rulesets com `required_status_checks` bloqueiam o merge enquanto
-os checks ainda não existirem).
+Os ficheiros `.json` desta pasta são copiados para `.github/rulesets/` do projeto
+(governança como código) e **aplicados/reconciliados no GitHub pelo
+`scripts/oss-enforce.sh`** — que corre a cada entrada no projeto: cria os rulesets
+ausentes e faz `PUT` dos divergentes. Também servem de corpo de pedido para
+`POST /repos/{owner}/{repo}/rulesets` da REST API do GitHub. Aplicar depois do
+primeiro push (os rulesets com `required_status_checks` bloqueiam o merge enquanto os
+checks ainda não existirem).
 
 Os nomes dos parâmetros seguem a API oficial de rulesets e foram **validados
 empiricamente** contra ela (`required_approving_review_count`, `require_code_owner_review`,
 `dismiss_stale_reviews_on_push`, `require_last_push_approval`,
 `require_extra_approval_for_unattributed_changes`, `required_review_thread_resolution`,
 `required_reviewers`, `allowed_merge_methods`, `required_status_checks` com
-`strict_required_status_checks_policy`, `do_not_enforce_on_create` e, opcionalmente,
-`integration_id` por check). Três regras duras:
+`strict_required_status_checks_policy`, `do_not_enforce_on_create`, `required_linear_history`,
+`branch_name_pattern`/`commit_message_pattern` com `operator`/`pattern`/`negate` e,
+opcionalmente, `integration_id` por check). Quatro regras duras:
 
 1. **Padrões são refs completas**: `refs/heads/...` para branches, `refs/tags/...` para
    tags. Padrões soltos (`release/**`, `v*`, `main`) são rejeitados com
@@ -23,6 +27,11 @@ empiricamente** contra ela (`required_approving_review_count`, `require_code_own
 3. **Nunca usar a chave `params`** (sem `-eters`): a API aceita-a e **ignora-a
    silenciosamente** — o ruleset fica criado com valores por omissão. Confirme com
    `gh api repos/{owner}/{repo}/rulesets/<id>` que os valores persistiram.
+4. **`negate` das regras de padrão inverte o sentido**: `negate: false` (predefinição)
+   faz a regra **falhar quando o padrão NÃO corresponde** — é assim que se **impõe** uma
+   convenção (nomes de branch, mensagens de commit). `negate: true` bloqueia quando o
+   padrão corresponde (usar para proibir formatos). Documentação REST: *"If true, the
+   rule will fail if the pattern matches."*
 
 Os corpos em JSON não têm comentários — as explicações ficam aqui.
 
@@ -30,9 +39,11 @@ Os corpos em JSON não têm comentários — as explicações ficam aqui.
 
 | Ficheiro              | Alvo           | O que impõe                                                                                          |
 | --------------------- | -------------- | ---------------------------------------------------------------------------------------------------- |
-| `regras-main.json`    | `branch`       | `~DEFAULT_BRANCH` e `refs/heads/release/**`: sem delete, sem force-push, PR com **2 aprovações**, code owner review, aprovações caducadas em push novo, merge só por **squash**, status checks obrigatórios (strict). |
+| `regras-main.json`    | `branch`       | `~DEFAULT_BRANCH`, `main`, `master`, `develop` e `refs/heads/release/**`: sem delete, sem force-push, histórico linear, PR com **2 aprovações**, code owner review, aprovações caducadas em push novo, merge só por **squash**, status checks obrigatórios (strict). **Commits diretos recusados.** |
 | `regras-tags.json`    | `tag`          | Tags `refs/tags/v*` **imutáveis**: proibidos `update` e `deletion`.                                    |
-| `regras-release.json` | `branch`       | Ramos `refs/heads/release/**`: sem delete, sem force-push, PR com **1 aprovação**.                     |
+| `regras-release.json` | `branch`       | Ramos `refs/heads/release/**`: sem delete, sem force-push, histórico linear, PR com **1 aprovação**.   |
+| `regras-nomes-de-branch.json` | `branch` | **REJEITA** branches fora de `<tipo>/<slug>` (`branch_name_pattern`, `negate: false`). Isentos: ramos longevos (`main`, `master`, `develop`, `gh-pages`, predefinido — nos `exclude`); exceções no regex: `dependabot/`, `renovate/`, `release-please--*`, `gh-readonly-queue/`. |
+| `regras-commits.json` | `branch`       | **REJEITA** mensagens fora de Conventional Commits (`commit_message_pattern`, `negate: false`) no ramo predefinido, `main`, `master`, `develop`, `release/**` — incluindo o commit de squash. Permite cabeçalho `tipo(escopo)!: …` e `Revert `/`Reapply `. |
 
 Notas:
 
@@ -55,10 +66,17 @@ Notas:
 
 ## Como aplicar
 
-Com o `gh` CLI autenticado (`gh auth login`) e a partir desta pasta:
+O caminho normal — **um comando, tudo aplicado e reconciliado** (reentry idempotente):
 
 ```bash
-# 1) Regra principal (ramo padrão + refs/heads/release/**) — aplicar PRIMEIRO
+bash scripts/oss-enforce.sh            # cria os ausentes e reconcilia os divergentes
+bash scripts/oss-enforce.sh --dry-run  # mostra o plano sem escrever
+```
+
+Aplicação manual, com o `gh` CLI autenticado (`gh auth login`) e a partir desta pasta:
+
+```bash
+# 1) Regra principal (ramos protegidos) — aplicar PRIMEIRO
 gh api --method POST \
   repos/{{OWNER}}/{{REPO}}/rulesets \
   --input regras-main.json
@@ -72,6 +90,16 @@ gh api --method POST \
 gh api --method POST \
   repos/{{OWNER}}/{{REPO}}/rulesets \
   --input regras-tags.json
+
+# 4) Convenção de nomes de ramificação (REJEITA nomes fora de <tipo>/<slug>)
+gh api --method POST \
+  repos/{{OWNER}}/{{REPO}}/rulesets \
+  --input regras-nomes-de-branch.json
+
+# 5) Convenção de mensagens de commit (REJEITA mensagens fora de Conventional Commits)
+gh api --method POST \
+  repos/{{OWNER}}/{{REPO}}/rulesets \
+  --input regras-commits.json
 ```
 
 Alternativa com `curl` (com um PAT com permissão `administration:write` ou `repo`):
@@ -105,6 +133,10 @@ remover, `DELETE .../rulesets/<id>`.
 1. **`regras-main.json`** — garante desde logo que nada entra em `{{DEFAULT_BRANCH}}` sem revisão.
 2. **`regras-release.json`** — protege os ramos de release antes de o primeiro `refs/heads/release/**` existir.
 3. **`regras-tags.json`** — fecha a porta à reescrita de tags (aplicar **antes** do primeiro release).
+4. **`regras-nomes-de-branch.json`** — a partir daqui, só nascem ramos `<tipo>/<slug>`.
+5. **`regras-commits.json`** — o que chega aos ramos protegidos tem de ser Convencional.
+
+(O `oss-enforce.sh` aplica tudo isto pela ordem certa de uma só vez.)
 
 Se o projeto ainda não tem CI, aplique primeiro os rulesets sem `required_status_checks` e adicione a
 regra depois do primeiro workflow verde — ou substitua o contexto placeholder pelo nome real do check.

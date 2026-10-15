@@ -36,9 +36,10 @@ de commit à publicação da versão, sem deixar espaço ao arbítrio humano.
 
 | Gate | Pedido do utilizador | Padrão imposto |
 |---|---|---|
+| R · Reentry | sempre (mesmo em projeto já governado) | **Verifica tudo e aplica o que falta** — fundação, rulesets, push protection, nomes de branch |
 | 0 · Fundação | "cria/prepara repo" | LICENSE · README+badges · CONTRIBUTING · CODEOWNERS · SECURITY · templates |
-| 1 · Commit | "commita" | Commits Convencionais (`tipo(escopo)!: descrição`) |
-| 2 · Push/PR | "push", "abre PR" | GitHub Flow: ramificação efémera, PR, sem segredos |
+| 1 · Commit | "commita" | Commits Convencionais (`tipo(escopo)!: descrição`) — impostos também no servidor |
+| 2 · Push/PR | "push", "abre PR" | GitHub Flow: ramificação efémera **`<tipo>/<slug>`**, PR, sem segredos; **commits diretos em main/develop/release recusados pelo GitHub** |
 | 3 · Merge | "faz merge" | Squash merge · histórico linear · status checks |
 | 4 · Versão | "muda a versão" | SemVer **calculado** dos commits · changelog **gerado** |
 | 5 · Release | "faz release/publica" | Tag `vX.Y.Z` · release notes · publicação via CI |
@@ -53,9 +54,11 @@ bash scripts/link-skill-global.sh   # liga nos 12 skill roots da máquina (--che
 ## Uso rápido (como skill de agente)
 
 ```bash
+bash scripts/oss-enforce.sh                                 # Reentry: reverifica e aplica o que falta
 bash scripts/oss-doctor.sh                                  # diagnóstico da governança
 bash scripts/oss-scaffold.sh --target . --owner acme --license mit
 bash scripts/oss-gate.sh commit-msg "$1"                    # Gate 1 (hook)
+bash scripts/oss-gate.sh branch feat/login                  # Gate 2: nome <tipo>/<slug>
 bash scripts/oss-gate.sh push                               # Gate 2
 python3 scripts/oss-version.py next                         # Gate 4: SemVer calculado
 python3 scripts/oss-changelog.py --write                    # changelog gerado
@@ -66,7 +69,7 @@ bash scripts/oss-gate.sh publish --version 1.4.0 --yes      # Gate 5
 
 ```
 SKILL.md                    # instruções da skill (núcleo operacional)
-scripts/                    # ferramentas coercivas (doctor, gate, scaffold, semver, changelog, pin-actions)
+scripts/                    # ferramentas coercivas (enforce, doctor, gate, scaffold, semver, changelog, pin-actions)
 references/                 # 10 guias: licenças, identidade, governança social, commits,
                             # branching, releases, rulesets, segurança OpenSSF,
                             # GitHub Actions/automações, gh CLI

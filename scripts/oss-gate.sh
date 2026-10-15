@@ -4,7 +4,8 @@
 #
 # Uso: bash scripts/oss-gate.sh <ação> [opções]
 #   commit-msg <ficheiro|mensagem>   valida Commits Convencionais (para hook commit-msg)
-#   push       [--branch B]          sem push a main, histórico convencional, sem segredos
+#   branch     [nome]                nome de ramificação segundo a convenção <tipo>/<slug>
+#   push       [--branch B]          sem push a ramos protegidos, nome convencional, sem segredos
 #   pr         [--title T] [--base B] título convencional, ramificação efémera, base main
 #   merge      [--title T]           squash merge: mensagem convencional, sem merge commits
 #   release    [--version X.Y.Z]     SemVer coerente com os commits, changelog, tag livre
@@ -14,6 +15,11 @@
 set -uo pipefail
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/oss-branch-policy.sh
+source "$SKILL_DIR/scripts/oss-branch-policy.sh" 2>/dev/null || {
+  printf 'Erro: oss-branch-policy.sh em falta em %s/scripts — Solução: reinstale a skill opensource-project\n' "$SKILL_DIR" >&2
+  exit 3
+}
 TYPES_REGEX='(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)'
 HEADER_REGEX="^${TYPES_REGEX}(\([^)]*\))?!?: .+"
 PASS=0; FAIL=0; WARN=0
@@ -93,7 +99,9 @@ validate_message() { # $1 = mensagem completa
     info "formato exigido: tipo(escopo)!: descrição — ex.: fix(auth): corrige validação de token"
     problems=1
   fi
-  [ "${#subject}" -gt 72 ] && { bad "cabeçalho com ${#subject} chars (máx. 72)"; problems=1; }
+  # o sufixo " (#N)" do GitHub no squash merge não conta para os 72 chars
+  local header; header="$(printf '%s' "$subject" | sed -E 's/ \(#[0-9]+\)$//')"
+  [ "${#header}" -gt 72 ] && { bad "cabeçalho com ${#header} chars (máx. 72, sem o sufixo ` (#N)` do GitHub)"; problems=1; }
   if printf '%s' "$1" | grep -qiE '^BREAKING[ -]CHANGE: .+'; then
     info "BREAKING CHANGE detetado → próximo release será MAJOR"
   fi
@@ -111,6 +119,21 @@ gate_commit_msg() {
   validate_message "$msg"
 }
 
+gate_branch() {
+  local name="${1:-}"
+  echo "Gate 2 · Branch — convenção de nomes <tipo>/<slug>"
+  [ -n "$name" ] || name="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  [ -n "$name" ] || die "sem nome de ramo para validar" "uso: oss-gate.sh branch <nome>" 2
+  if oss_branch_ok "$name"; then
+    ok "nome de ramo conforme: '$name'"
+  else
+    bad "nome de ramo FORA da convenção: '$name'"
+    info "formato exigido: <tipo>/<slug> — tipos: feat fix docs style refactor perf test build ci revert hotfix release"
+    info "exceções (automação): dependabot/*, renovate/*, release-please--*, gh-readonly-queue/*"
+    info "Solução: git branch -m $name feat/<slug>"
+  fi
+}
+
 gate_push() {
   local branch="" scan_only=0
   while [ $# -gt 0 ]; do
@@ -126,15 +149,23 @@ gate_push() {
   echo "Gate 2 · Push — fronteiras de ramificação e integridade"
   if [ "$scan_only" -eq 1 ]; then
     info "modo --scan-only (CI): política de ramificação ignorada; mantém-se a varredura"
-  elif [ "$branch" = "$db" ]; then
+  elif oss_branch_protected "$branch" "$db"; then
     if git remote get-url origin >/dev/null 2>&1; then
-      bad "push direto para '$db' é proibido (Gate 2 — GitHub Flow)"
+      bad "push direto para '$branch' é proibido (Gate 2 — ramos protegidos: $db, main, master, develop, release/**)"
       info "Solução: git switch -c feat/<nome> && git push -u origin feat/<nome> e abra um PR"
     else
-      warn "sem remoto: push a '$db' tolerado localmente; configure um remoto e use PRs"
+      warn "sem remoto: push a '$branch' tolerado localmente; configure um remoto e use PRs"
     fi
   else
-    ok "ramificação efémera '$branch' (base '$db')"
+    ok "ramo '$branch' fora da zona protegida (base '$db')"
+    if oss_branch_ok "$branch"; then
+      ok "nome de ramo conforme a convenção: '$branch'"
+    else
+      bad "nome de ramo FORA da convenção: '$branch'"
+      info "formato exigido: <tipo>/<slug> — tipos: feat fix docs style refactor perf test build ci revert hotfix release"
+      info "exceções (automação): dependabot/*, renovate/*, release-please--*, gh-readonly-queue/*"
+      info "Solução: git branch -m $branch feat/<slug> — o GitHub REJEITA nomes fora do padrão (ruleset de nomes)"
+    fi
   fi
 
   local range=""
@@ -152,7 +183,7 @@ gate_push() {
       if ! check_commit_subject "$subj" && ! printf '%s' "$subj" | grep -Eq '^(Merge |Revert "|fixup!|squash!)'; then
         bad "commit fora do padrão: '$subj'"; bad_msgs=$((bad_msgs+1))
       fi
-    done < <(git log --pretty=format:'%s' "$range" 2>/dev/null)
+    done < <(git log --pretty=tformat:'%s' "$range" 2>/dev/null)
     if [ "$total" -eq 0 ]; then
       info "nada para enviar acima da base"
     elif [ "$bad_msgs" -eq 0 ]; then
@@ -183,9 +214,7 @@ gate_pr() {
   local branch; branch="$(git rev-parse --abbrev-ref HEAD)"
   echo "Gate 2 · PR — submissão por Pull Request"
   [ "$branch" != "$db" ] && ok "ramificação de trabalho '$branch'" || bad "não abra PR a partir de '$db'"
-  printf '%s' "$branch" | grep -Eq '^(feat|fix|chore|docs|refactor|perf|test|release|hotfix)/' \
-    && ok "nome de ramificação com prefixo de tipo" \
-    || warn "nome de ramificação sem prefixo (use feat/<nome>, fix/<nome>, …)"
+  info "o nome da ramificação é validado no Gate 2 (abaixo) — convenção <tipo>/<slug>, sem exceções"
   [ "$base" = "$db" ] && ok "base '$base' (ramificação predefinida)" || warn "base '$base' difere da predefinida '$db'"
   if [ -n "$title" ]; then
     validate_message "$title" || info "Solução: titule o PR como feat(escopo): descrição — vira a mensagem do squash"
@@ -320,7 +349,7 @@ gate_publish() {
 }
 
 usage() {
-  sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -329,6 +358,7 @@ main() {
   case "$action" in
     commit-msg|commit) [ $# -ge 1 ] || die "falta a mensagem ou o ficheiro" "uso: oss-gate.sh commit-msg <ficheiro|mensagem>" 2
                        gate_commit_msg "$1" ;;
+    branch)            gate_branch "${1:-}" ;;
     push)              gate_push "$@" ;;
     pr)                gate_pr "$@" ;;
     merge)             gate_merge "$@" ;;

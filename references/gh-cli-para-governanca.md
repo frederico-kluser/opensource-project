@@ -27,7 +27,7 @@ Escopos mínimos para governar: `repo`, `administration:write` (rulesets),
 | Secret Scanning + Push Protection | `gh api --method PATCH /repos/OWNER/REPO -f 'security_and_analysis[secret_scanning][status]=enabled' -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'` |
 | Secrets (env) | `echo "$VALOR" \| gh secret set NPM_TOKEN --env production` |
 | Variables | `gh variable set RELEASE_CHANNEL --body "stable"` |
-| Rulesets | `gh api --method POST /repos/OWNER/REPO/rulesets --input assets/rulesets/regras-main.json` |
+| Rulesets | `bash scripts/oss-enforce.sh` (cria/reconcilia os 5 rulesets) · `gh api --method POST /repos/OWNER/REPO/rulesets --input .github/rulesets/regras-main.json` · `gh api --method PUT /repos/OWNER/REPO/rulesets/<id> --input …` |
 | Labels | `gh label create "breaking" --color B60205 --description "Mudança incompatível"` |
 | Release | `gh release create v1.4.0 --verify-tag --notes-file CHANGELOG.md` |
 | Workflows | `gh workflow list` · `gh workflow enable ci.yml` · `gh workflow disable old.yml` |
@@ -52,6 +52,7 @@ Complementos obrigatórios:
 ```bash
 gh pr update-branch                        # PR desatualizado, sem conflitos
 gh pr view <n> --json state,mergeable,statusCheckRollup,reviewDecision
+bash scripts/oss-gate.sh branch            # valida o nome da ramificação (<tipo>/<slug>)
 bash scripts/oss-gate.sh pr --title "..."  # valida o título como commit convencional
 ```
 

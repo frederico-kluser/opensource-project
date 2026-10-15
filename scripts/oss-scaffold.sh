@@ -175,6 +175,8 @@ fi
 render "$ASSETS/rulesets/regras-main.json" ".github/rulesets/regras-main.json"
 render "$ASSETS/rulesets/regras-tags.json" ".github/rulesets/regras-tags.json"
 render "$ASSETS/rulesets/regras-release.json" ".github/rulesets/regras-release.json"
+render "$ASSETS/rulesets/regras-nomes-de-branch.json" ".github/rulesets/regras-nomes-de-branch.json"
+render "$ASSETS/rulesets/regras-commits.json" ".github/rulesets/regras-commits.json"
 
 echo "-- Filtros de commit --"
 if [ -e "$TARGET/package.json" ]; then
@@ -184,7 +186,10 @@ if [ -e "$TARGET/package.json" ]; then
   [ "$DRY" -eq 0 ] && chmod +x "$TARGET/.husky/commit-msg" "$TARGET/.husky/pre-commit" 2>/dev/null
   printf '  [INFO] acrescente ao package.json: "prepare": "husky" + devDeps (ver assets/templates/package-husky-fragment.json)\n'
 elif [ "$HOOK" -eq 1 ]; then
-  if [ "$DRY" -eq 1 ]; then
+  if [ -e "$TARGET/.git/hooks/commit-msg" ] && [ "$FORCE" -eq 0 ] \
+     && grep -q "oss-gate.sh" "$TARGET/.git/hooks/commit-msg" 2>/dev/null; then
+    printf '  [IGNORADO]    .git/hooks/commit-msg (já invoca oss-gate.sh; use --force)\n'; IGNORADO=$((IGNORADO+1))
+  elif [ "$DRY" -eq 1 ]; then
     printf '  [CRIARIA]     .git/hooks/commit-msg (oss-gate.sh commit-msg)\n'
   else
     mkdir -p "$TARGET/.git/hooks"
@@ -203,7 +208,9 @@ cat <<EOF
 
 Passos seguintes (nesta ordem):
   1. Revise os ficheiros gerados (README badges, CODEOWNERS com as equipas reais).
-  2. Aplique os rulesets: gh api --method POST repos/$OWNER/$REPO/rulesets --input .github/rulesets/regras-main.json
+  2. Aplique/reconcilie TUDO o que falta no GitHub (rulesets de nomes de branch,
+     proibição de commits diretos, tags imutáveis, push protection):
+     bash "$SKILL_DIR/scripts/oss-enforce.sh" --target "$TARGET"
   3. Fixe as actions por SHA: bash "$SKILL_DIR/scripts/oss-pin-actions.sh"
   4. Diagnóstico: bash "$SKILL_DIR/scripts/oss-doctor.sh"
 EOF

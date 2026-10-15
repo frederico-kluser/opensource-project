@@ -44,18 +44,31 @@ participating, you are expected to uphold it.
 - Keep your branch up to date by rebasing on `upstream/{{DEFAULT_BRANCH}}` (do not merge
   `{{DEFAULT_BRANCH}}` into your branch).
 
-## Branch naming
+## Branch naming — enforced, not advisory
 
-Use a short, descriptive prefix:
+A repository **ruleset rejects branch names outside `<type>/<slug>`** — the push is refused
+before anyone reviews it. The type set is closed:
 
-| Pattern    | Use for                             | Example                    |
-| ---------- | ----------------------------------- | -------------------------- |
-| `feat/*`   | New functionality                   | `feat/rate-limiter`        |
-| `fix/*`    | Bug fixes                           | `fix/null-pointer-parser`  |
-| `chore/*`  | Maintenance, tooling, dependencies  | `chore/upgrade-ci`         |
+| Pattern      | Use for                             | Example                    |
+| ------------ | ----------------------------------- | -------------------------- |
+| `feat/*`     | New functionality                   | `feat/rate-limiter`        |
+| `fix/*`      | Bug fixes                           | `fix/null-pointer-parser`  |
+| `chore/*`    | Maintenance, tooling, dependencies  | `chore/upgrade-ci`         |
+| `docs/*`     | Documentation                       | `docs/api-examples`        |
+| `style/*`    | Formatting, no logic change         | `style/prettier-pass`      |
+| `refactor/*` | Restructuring, no behavior change   | `refactor/extract-parser`  |
+| `perf/*`     | Performance                         | `perf/cache-warmup`        |
+| `test/*`     | Tests                               | `test/edge-cases`          |
+| `build/*`    | Build system, packaging             | `build/vite-5`             |
+| `ci/*`       | CI configuration                    | `ci/runner-matrix`         |
+| `revert/*`   | Reverts                             | `revert/rate-limiter`      |
+| `hotfix/*`   | Emergency fixes                     | `hotfix/null-deref`        |
+| `release/*`  | Past-release maintenance ONLY       | `release/1.4`              |
 
-Other conventional prefixes (`docs/*`, `refactor/*`, `test/*`, `perf/*`, `ci/*`) are welcome where
-they fit, but `feat/*`, `fix/*` and `chore/*` cover the vast majority of work.
+The slug is short, kebab-case and describes the change — never dates or people names.
+Only automation branches are exempt (`dependabot/*`, `renovate/*`, `release-please--*`,
+`gh-readonly-queue/*`). Long-lived branches (the default branch, `main`, `master`,
+`develop`, `gh-pages`) keep their names and are protected from direct commits instead.
 
 ## Commit convention
 

@@ -4,13 +4,20 @@
   "enforcement": "active",
   "conditions": {
     "ref_name": {
-      "include": ["~DEFAULT_BRANCH", "refs/heads/release/**"],
+      "include": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/main",
+        "refs/heads/master",
+        "refs/heads/develop",
+        "refs/heads/release/**"
+      ],
       "exclude": []
     }
   },
   "rules": [
     { "type": "deletion" },
     { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
     {
       "type": "pull_request",
       "parameters": {
@@ -19,7 +26,7 @@
         "require_code_owner_review": true,
         "require_last_push_approval": false,
         "require_extra_approval_for_unattributed_changes": false,
-        "required_review_thread_resolution": false,
+        "required_review_thread_resolution": true,
         "required_reviewers": [],
         "allowed_merge_methods": ["squash"]
       }

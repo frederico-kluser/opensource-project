@@ -7,32 +7,57 @@
 
 ## Regras obrigatórias em TODO o desenvolvimento
 
-1. **Nunca escrever diretamente em `{{DEFAULT_BRANCH}}`** — ramificação efémera
+1. **Nunca escrever diretamente em ramos protegidos** — o ramo predefinido
+   (`{{DEFAULT_BRANCH}}`) e `master`, `develop`, `release/**` — ramificação efémera
    (`feat/*`, `fix/*`, `chore/*`, `docs/*`) → PR com título Convencional → checks
-   verdes → **squash merge** → delete branch. Sem exceções.
-2. **Commits Convencionais**: `tipo(escopo)!: descrição` — imperativo, ≤ 72 chars.
+   verdes → **squash merge** → delete branch. O GitHub **recusa commits diretos**
+   nesses ramos (ruleset), não é só convenção.
+2. **Nomes de ramificação SEM DÓ**: `<tipo>/<slug>` com tipos fechados
+   `feat fix docs style refactor perf test build ci revert hotfix release` e slug
+   curto em kebab-case (`feat/refresh-token`). Exceções: apenas prefixos de
+   automação (`dependabot/*`, `renovate/*`, `release-please--*`,
+   `gh-readonly-queue/*`). Fora disso o GitHub **rejeita a branch** (ruleset
+   "Convenção de Nomes de Ramificação") — valide com
+   `bash {{SKILL_ROOT}}/scripts/oss-gate.sh branch <nome>`.
+3. **Commits Convencionais**: `tipo(escopo)!: descrição` — imperativo, ≤ 72 chars.
    Tipos: `feat fix docs style refactor perf test build ci chore revert`.
-   `!` ou rodapé `BREAKING CHANGE:` → versão MAJOR.
-3. **A versão é cálculo, nunca digitação**:
+   `!` ou rodapé `BREAKING CHANGE:` → versão MAJOR. Imposto também no **servidor**
+   (ruleset "Convenção de Mensagens de Commit") para o que entra em ramos protegidos.
+4. **A versão é cálculo, nunca digitação**:
    `python3 {{SKILL_ROOT}}/scripts/oss-version.py next` (`feat`→MINOR, `fix`→PATCH,
    `!`→MAJOR). Bump manual só com justificação explícita do utilizador.
-4. **CHANGELOG gerado, nunca reescrito**:
+5. **CHANGELOG gerado, nunca reescrito**:
    `python3 {{SKILL_ROOT}}/scripts/oss-changelog.py --write`.
-5. **Zero segredos** no código ou no histórico:
+6. **Zero segredos** no código ou no histórico:
    `bash {{SKILL_ROOT}}/scripts/oss-gate.sh push --scan-only` antes de submeter;
    credenciais entram apenas via `echo "$X" | gh secret set --env production`.
-6. **Workflows seguros**: actions fixadas por SHA
+7. **Workflows seguros**: actions fixadas por SHA
    (`bash {{SKILL_ROOT}}/scripts/oss-pin-actions.sh`), `permissions` mínimos e
    `timeout-minutes` em todos os jobs; o `context` do ruleset é o **nome do job**.
-7. **Nunca contornar um gate**: se `oss-gate.sh` bloquear, corrija a CAUSA e repita.
+8. **Nunca contornar um gate**: se `oss-gate.sh` bloquear, corrija a CAUSA e repita.
    Nunca `--no-verify`, nunca force-push, nunca reescrever histórico partilhado.
+
+## Regra de reentry (vale para QUALQUER pedido, sempre)
+
+> **Toda a entrada neste projeto — mesmo que ele já use a skill — começa por
+> verificar o que existe e colocar o que falta. Nada é assumido.**
+
+```bash
+bash {{SKILL_ROOT}}/scripts/oss-enforce.sh
+```
+
+O `oss-enforce.sh` é idempotente e não-destrutivo: cria a fundação em falta
+(ficheiros, hooks), **cria** os rulesets ausentes e **reconcilia** os divergentes no
+GitHub, ativa o Push Protection e audita nomes de branch. Corre **sem pedir nada**,
+no início de qualquer tarefa de governança e antes de fechar qualquer trabalho.
 
 ## Procedimento por pedido do utilizador (executar sem pedir estes passos)
 
 | Pedido | Procedimento |
 |---|---|
+| (sempre, 1.º passo) | `bash {{SKILL_ROOT}}/scripts/oss-enforce.sh` — reverifica tudo e aplica o que faltar |
 | "commita" / "faz commit" | `bash {{SKILL_ROOT}}/scripts/oss-gate.sh commit-msg "<msg>"` → `git commit` (o hook `commit-msg` revalida) |
-| "push" / "sobe" | branch ≠ `{{DEFAULT_BRANCH}}` → `oss-gate.sh push` → `git push -u origin <branch>` |
+| "push" / "sobe" | branch ≠ ramos protegidos e nome `<tipo>/<slug>` → `oss-gate.sh push` → `git push -u origin <branch>` |
 | "abre PR" / "faz merge" | título Convencional = mensagem do squash → `gh pr create --base {{DEFAULT_BRANCH}}` → `gh pr checks --watch` → `gh pr merge --squash --delete-branch` |
 | "muda/sobe a versão" | `oss-version.py next` → aplicar o valor nos manifestos → `oss-changelog.py --write` |
 | "faz release" / "publica" | `oss-gate.sh release --version X.Y.Z` → commit de release → `git tag -a vX.Y.Z` → `gh release create vX.Y.Z --verify-tag --notes-file` → publicação via CI com secrets em Environment |
@@ -41,7 +66,8 @@
 
 ## Antes de fechar qualquer tarefa
 
-- `bash {{SKILL_ROOT}}/scripts/oss-doctor.sh` sem nenhuma linha `[FALTA]` (avisos
+- `bash {{SKILL_ROOT}}/scripts/oss-enforce.sh` sem nenhuma linha `[FALTA]` e
+  `bash {{SKILL_ROOT}}/scripts/oss-doctor.sh` sem nenhuma linha `[FALTA]` (avisos
   aceitáveis; faltas não — corrigir antes de submeter).
 - Commits Convencionais; versão e changelog coerentes com o que mudou.
 - Reportar ao utilizador: o que mudou, gates cumpridos e URLs criadas (PR/release).
@@ -49,9 +75,12 @@
 
 ## Cofre desta versão
 
-`{{DEFAULT_BRANCH}}` é protegida por ruleset (PR obrigatório, squash-only, status
-checks strict, sem force-push, sem delete) e as tags `v*` são imutáveis. Releases
-nunca retrocedem: reverter um `BREAKING CHANGE` publicado exige um novo MAJOR.
+`{{DEFAULT_BRANCH}}` (e `master`, `develop`, `release/**`) é cofre por
+ruleset: PR obrigatório, squash-only, status checks strict, histórico linear, sem
+force-push, sem delete — **commits diretos são recusados pelo GitHub**. Os nomes de
+branch seguem `<tipo>/<slug>` e as mensagens Convencionais são impostas também no
+servidor. Tags `v*` são imutáveis. Releases nunca retrocedem: reverter um
+`BREAKING CHANGE` publicado exige um novo MAJOR.
 
 ## Semântica de erro
 
