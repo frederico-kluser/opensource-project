@@ -20,6 +20,7 @@ Closes #
 ## Checklist
 
 - [ ] PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (it becomes the squash-merge commit message).
+- [ ] Branch synchronized with the base by **merge** — never `git rebase` / `git pull --rebase`.
 - [ ] Description explains **what** and **why**.
 - [ ] Related issues are linked with `Closes #<issue>`.
 - [ ] Tests added or updated for behavioural changes (bug fixes include a regression test).

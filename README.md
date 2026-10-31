@@ -40,10 +40,16 @@ de commit à publicação da versão, sem deixar espaço ao arbítrio humano.
 | 0 · Fundação | "cria/prepara repo" | LICENSE · README+badges · CONTRIBUTING · CODEOWNERS · SECURITY · templates |
 | 1 · Commit | "commita" | Commits Convencionais (`tipo(escopo)!: descrição`) — impostos também no servidor |
 | 2 · Push/PR | "push", "abre PR" | GitHub Flow: ramificação efémera **`<tipo>/<slug>`**, PR, sem segredos; **commits diretos em main/develop/release recusados pelo GitHub** |
-| 3 · Merge | "faz merge" | Squash merge · histórico linear · status checks |
+| 3 · Merge | "faz merge" | Merge (squash no cofre) · histórico linear · status checks · **rebase desativado** |
 | 4 · Versão | "muda a versão" | SemVer **calculado** dos commits · changelog **gerado** |
 | 5 · Release | "faz release/publica" | Tag `vX.Y.Z` · release notes · publicação via CI |
 | 6 · Segurança | sempre | OpenSSF Scorecard ≥ 7 · least privilege · actions fixadas por SHA |
+
+> **Merge, nunca rebase.** Sincronize a ramificação com `git merge origin/main` (ou
+> `git pull`, que faz merge) e integre o PR com merge (squash no cofre). O
+> `oss-enforce.sh` deteta e corrige rebase — `pull.rebase`, `branch.*.rebase`,
+> `allow_rebase_merge` e `allowed_merge_methods` — e regista a política em
+> `CLAUDE.md`/`AGENTS.md`.
 
 ## Instalação
 
@@ -55,6 +61,7 @@ bash scripts/link-skill-global.sh   # liga nos 12 skill roots da máquina (--che
 
 ```bash
 bash scripts/oss-enforce.sh                                 # Reentry: reverifica e aplica o que falta
+bash scripts/oss-merge-policy.sh check                      # merge, nunca rebase (diagnóstico)
 bash scripts/oss-hooks.sh install --global                  # regras LOCAIS em qualquer projeto (hooks)
 bash scripts/oss-doctor.sh                                  # diagnóstico da governança
 bash scripts/oss-scaffold.sh --target . --owner acme --license mit
@@ -70,7 +77,7 @@ bash scripts/oss-gate.sh publish --version 1.4.0 --yes      # Gate 5
 
 ```
 SKILL.md                    # instruções da skill (núcleo operacional)
-scripts/                    # ferramentas coercivas (enforce, doctor, gate, scaffold, semver, changelog, pin-actions)
+scripts/                    # ferramentas coercivas (enforce, doctor, gate, scaffold, merge-policy, semver, changelog, pin-actions)
 references/                 # 10 guias: licenças, identidade, governança social, commits,
                             # branching, releases, rulesets, segurança OpenSSF,
                             # GitHub Actions/automações, gh CLI

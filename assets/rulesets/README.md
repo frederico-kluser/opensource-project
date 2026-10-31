@@ -46,7 +46,7 @@ Os corpos em JSON não têm comentários — as explicações ficam aqui.
 
 | Ficheiro              | Alvo           | O que impõe                                                                                          |
 | --------------------- | -------------- | ---------------------------------------------------------------------------------------------------- |
-| `regras-main.json`    | `branch`       | `~DEFAULT_BRANCH`, `main`, `master`, `develop` e `refs/heads/release/**`: sem delete, sem force-push, histórico linear, PR com **2 aprovações**, code owner review, aprovações caducadas em push novo, merge só por **squash**, status checks obrigatórios (strict). **Commits diretos recusados.** |
+| `regras-main.json`    | `branch`       | `~DEFAULT_BRANCH`, `main`, `master`, `develop` e `refs/heads/release/**`: sem delete, sem force-push, histórico linear, PR com **2 aprovações**, code owner review, aprovações caducadas em push novo, merge só por **squash**, status checks obrigatórios (strict). **Commits diretos recusados.** O rebase é desligado no repositório (`allow_rebase_merge=false`). |
 | `regras-tags.json`    | `tag`          | Tags `refs/tags/v*` **imutáveis**: proibidos `update` e `deletion`.                                    |
 | `regras-release.json` | `branch`       | Ramos `refs/heads/release/**`: sem delete, sem force-push, histórico linear, PR com **1 aprovação**.   |
 | `regras-nomes-de-branch.json` | `branch` | **REJEITA** branches fora de `<tipo>/<slug>` — regras `creation` + `update` sobre todas as refs **exceto** as que cumprem a convenção (permitidos nos `exclude`, fnmatch; portátil a qualquer plano). Isentos: ramos longevos (`main`, `master`, `develop`, `gh-pages`, predefinido) e prefixos de automação (`dependabot/`, `renovate/`, `release-please--*`, `gh-readonly-queue/`). |
@@ -69,7 +69,10 @@ Notas:
   check de uma integração específica (GitHub App/Actions); para checks de workflows normais basta o
   `context`.
 - A regra `deletion` **proíbe** apagar o ref; `update` proíbe mover/reescrever (tags); `non_fast_forward`
-  proíbe force-push. `allowed_merge_methods: ["squash"]` limita o botão de merge ao squash.
+  proíbe force-push. `allowed_merge_methods: ["squash"]` limita o botão de merge ao squash;
+  além disso, `allow_rebase_merge=false` no repositório e nenhum `"rebase"` em
+  `allowed_merge_methods` — o `oss-merge-policy.sh` (chamado pelo `oss-enforce.sh`)
+  garante e corrige os dois.
 
 ## Como aplicar
 

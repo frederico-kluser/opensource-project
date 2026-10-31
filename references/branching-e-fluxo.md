@@ -2,7 +2,8 @@
 
 A forma da história determina a saúde do projeto. Esta skill impõe **GitHub Flow
 sobre base trunk-based**: uma `main` viva e sempre implementável, ramificações
-efémeras e squash merge obrigatório — o oposto do GitFlow clássico.
+efémeras e **merge como única integração** (squash no PR) — rebase é proibido — o
+oposto do GitFlow clássico.
 
 ## Porquê o GitFlow é antipadrão em OSS colaborativo
 
@@ -28,6 +29,10 @@ releases cadenciadas e equipas fechadas. Em open-source colaborativo falha:
 4. **Squash merge obrigatório** — cada PR vira um único commit convencional em `main`.
 5. **Delete branch após merge** — `gh pr merge --squash --delete-branch`; ramificação
    morta é ruído e armadilha para o próximo contribuidor.
+
+**Sincronização por merge**: a ramificação acompanha `main` com merge commit
+(`git merge origin/main`), nunca rebase. O PR é squash, por isso `main` continua
+linear; o merge commit vive apenas na ramificação de trabalho e desaparece no squash.
 
 ## Naming de ramificações — convenção FECHADA, imposta pelo GitHub
 
@@ -122,22 +127,28 @@ Produção é a tag `vX.Y.Z` mais recente nascida de `main`. Para um bug em prod
 Os ramos `release/**` têm ruleset próprio (PR obrigatório, checks mais leves e prazo
 de merge diferente — ver `rulesets-e-protecao.md`) e nunca recebem funcionalidades.
 
-## Rebase vs merge
+## Merge, nunca rebase
 
-- **Antes do PR**: rebase a ramificação sobre `main` atual
-  (`git fetch origin && git rebase origin/main`) — o PR fica linear, sem
-  "Merge branch 'main' into feat/x".
-- **Nunca reescrever histórico partilhado**: depois do push, nada de `rebase`/`reset`
-  em `main` ou `release/**` (o ruleset bloqueia `non_fast_forward`). Em ramificação
-  própria, ainda sem revisões, aceita-se `git push --force-with-lease`.
-- Predefinição pessoal: `git pull --rebase`; merge de `main` na ramificação só quando
-  o rebase é mesmo impossível.
+- **Sincronizar a ramificação**: `git fetch origin && git merge origin/main` (ou
+  `git pull`, que faz merge). O merge commit na ramificação é permitido e preserva a
+  história real; como o PR entra por squash, `main` continua linear.
+- **Nunca** `git rebase`, `git pull --rebase` nem `git rebase origin/main` — rebase
+  reescreve a história e é proibido pela skill.
+- **Histórico partilhado**: nada de rebase/force-push em `main` ou `release/**`; o
+  ruleset bloqueia `non_fast_forward`. Com merge, não é preciso reescrever a
+  ramificação para a atualizar.
+- **Configuração imposta**: `oss-enforce.sh` deteta `pull.rebase`,
+  `branch.*.rebase`, `allow_rebase_merge` e `allowed_merge_methods` com rebase e
+  corrige — merge em vez de rebase — sem perguntar. Diagnóstico dedicado:
+  `bash scripts/oss-merge-policy.sh check`.
 
 ## Fluxo operacional do agente (passo a passo)
 
 ```bash
 git switch -c feat/refresh-token main
 # ... edita e testa — lint e testes verdes são pré-condição de PR ...
+git fetch origin
+git merge origin/main                      # sincronização = merge; NUNCA rebase
 git add -A
 git commit -m "feat(auth): adiciona refresh token de curta duração"  # hook commit-msg valida
 bash scripts/oss-gate.sh push --branch feat/refresh-token
@@ -157,8 +168,10 @@ URL do PR e o sha do commit de squash.
 
 Quando `main` avança e o GitHub marca o PR como "out of date":
 
-- `gh pr update-branch` — o GitHub atualiza a ramificação pela API (sem conflitos).
-- Com conflitos, ou para histórico limpo: `git fetch origin && git rebase origin/main`,
-  resolve os conflitos commit a commit e `git push --force-with-lease`.
+- `gh pr update-branch` — o GitHub atualiza a ramificação pela API por **merge**
+  (sem conflitos).
+- Com conflitos: `git fetch origin && git merge origin/main`, resolve os conflitos,
+  confirma com `git commit` se o merge não fechar sozinho e `git push`. **Nunca**
+  rebase nem force-push.
 - Depois de atualizado, `gh pr checks --watch` outra vez: uma atualização pode
   invalidar checks que antes estavam verdes.

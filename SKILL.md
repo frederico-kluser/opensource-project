@@ -1,6 +1,6 @@
 ---
 name: opensource-project
-description: Governa TODO o ciclo de vida de projetos open-source para agentes de código — fundação (licença, README+badges, CONTRIBUTING, CODEOWNERS, SECURITY), Commits Convencionais, GitHub Flow + squash merge, SemVer/changelogs/releases, GitHub Rulesets (nomes de branch, commits diretos proibidos, tags imutáveis) e OpenSSF Scorecard. Use SEMPRE que o pedido mencionar push, commit, mudar/subir versão, release, changelog, publicar pacote, criar/preparar repo open-source, branch protection/rulesets, nomes de branch, forçar/impor regras no GitHub, governança ou conformidade OSS.
+description: Governa TODO o ciclo de vida de projetos open-source para agentes de código — fundação (licença, README+badges, CONTRIBUTING, CODEOWNERS, SECURITY), Commits Convencionais, GitHub Flow + merge (nunca rebase; squash no PR), SemVer/changelogs/releases, GitHub Rulesets (nomes de branch, commits diretos proibidos, tags imutáveis) e OpenSSF Scorecard. Use SEMPRE que o pedido mencionar push, commit, mudar/subir versão, release, changelog, publicar pacote, criar/preparar repo open-source, branch protection/rulesets, nomes de branch, forçar/impor regras no GitHub, governança ou conformidade OSS.
 license: MIT
 metadata:
   maintainer: ondokai
@@ -32,6 +32,8 @@ plataforma que as tornam invioláveis.
 - "verifica se está tudo", "aplica o que falta", "o projeto já usa a skill mas…".
 - "regra local", "hooks locais", "pre-push", "commit-msg", "protege sem GitHub",
   "em qualquer projeto", "na minha máquina".
+- "está a fazer rebase", "pull --rebase", "merge ou rebase", "atualizar a branch",
+  "sincronizar com a main".
 - "automações do GitHub Actions", "pipeline de testes", "CI/CD", "workflow", "matrix",
   "cache/artifacts", "reusable workflows", "CodeQL", "dependabot", "agendamentos".
 - "que licença uso?", "README com badges", "CONTRIBUTING", "SECURITY.md".
@@ -49,11 +51,11 @@ gate** — se falhar, corrigir a causa e repetir.
 
 | Gate | Gatilho (pedido do utilizador) | O que é imposto | Ferramenta |
 |---|---|---|---|
-| R · Reentry | **sempre** — todo o contacto com um projeto, mesmo que já use a skill | Verificação completa e aplicação do que falta: fundação local, rulesets no GitHub (cria ausentes, reconcilia divergentes), push protection, nomes de branch | `oss-enforce.sh` |
+| R · Reentry | **sempre** — todo o contacto com um projeto, mesmo que já use a skill | Verificação completa e aplicação do que falta: fundação local, **política de merge (rebase desativado)**, rulesets no GitHub (cria ausentes, reconcilia divergentes), push protection, nomes de branch | `oss-enforce.sh` |
 | 0 · Fundação | "cria/prepara repo", 1.º contacto | LICENSE, README+badges, CONTRIBUTING, CODEOWNERS, SECURITY.md, templates de issue/PR, CHANGELOG | `oss-scaffold.sh` |
 | 1 · Commit | "commit", hook `commit-msg` | Commits Convencionais: `tipo(escopo)!: descrição`, tipos fechados, ≤72 chars, BREAKING CHANGE detetado | `oss-gate.sh commit-msg` |
 | 2 · Push/PR | "push", "sobe", "abre PR" | Sem push direto a ramos protegidos (`main`, `master`, `develop`, `release/**`); nome de branch `<tipo>/<slug>` **obrigatório**; histórico convencional; varrimento de segredos | `oss-gate.sh push` / `pr` / `branch` |
-| 3 · Merge | "faz merge", "aplica o PR" | PR obrigatório, squash merge, delete branch, histórico linear, status checks verdes | `oss-gate.sh merge` |
+| 3 · Merge | "faz merge", "aplica o PR" | PR obrigatório, **merge (squash no cofre; rebase nunca)**, delete branch, histórico linear, status checks verdes | `oss-gate.sh merge` |
 | 4 · Versão | "muda/sobe a versão" | SemVer **calculado** a partir dos commits desde a última tag (feat→MINOR, fix→PATCH, `!`/BREAKING→MAJOR); changelog **gerado**, nunca escrito à mão | `oss-version.py`, `oss-changelog.py` |
 | 5 · Release/Publicação | "faz release", "publica" | Tag `vX.Y.Z` anotada, release notes, publicação via CI com secrets em Environments, sem versões retrocedidas | `oss-gate.sh release` / `publish` |
 | 6 · Segurança (transversal) | sempre | OpenSSF Scorecard ≥ 7, least privilege em workflows, actions fixadas por SHA, secret scanning | `oss-doctor.sh`, `oss-pin-actions.sh` |
@@ -71,12 +73,33 @@ O `oss-enforce.sh` é idempotente e não-destrutivo:
   `oss-scaffold.sh` — nunca sobrescreve trabalho existente;
 - **cria** no GitHub os rulesets ausentes e **reconcilia** (PUT) os divergentes do
   JSON versionado em `.github/rulesets/` — a governança como código é a verdade;
+- **configura a política de merge** — `pull.rebase`/`branch.*.rebase` → `false`,
+  `allow_rebase_merge=false` e `"rebase"` fora de `allowed_merge_methods` — e grava a
+  política em `CLAUDE.md`/`AGENTS.md` (via `oss-merge-policy.sh`, sem perguntar);
 - ativa o Secret Scanning Push Protection se estiver desligado;
 - audita os nomes de branch existentes (os violadores são listados com a cura).
 
 Sem perguntas, sem exceções, no início de qualquer tarefa de governança e antes de
 fechar qualquer trabalho. `--dry-run` mostra o plano; `--local` limita ao que é do
 repositório.
+
+## Política de integração — merge, nunca rebase
+
+A skill não aceita rebase como estratégia: **sincronizar é merge** e **integrar é
+merge** (squash no PR ou merge commit onde o ruleset permitir). Rebase reescreve
+história e é tratado como erro de configuração — detetado e corrigido, não negociado.
+
+- **Sincronizar**: `git fetch origin && git merge origin/main` (ou `git pull`, que faz
+  merge). Proibido `git rebase`, `git pull --rebase` e `git rebase origin/main`.
+- **Integrar**: `gh pr merge --squash --delete-branch` no cofre (squash é merge,
+  mantém `main` linear); `gh pr merge --merge` onde o ruleset permitir. Rebase-merge
+  e rebase nunca.
+- **Detetar e corrigir**: o passo 2 do `oss-enforce.sh` verifica `pull.rebase`,
+  `branch.*.rebase`, `allow_rebase_merge` e `allowed_merge_methods`; se encontrar
+  rebase, corrige e reporta `[CONFIGURADO]` sem perguntar. O mesmo comando está em
+  `scripts/oss-merge-policy.sh` (`apply` para corrigir, `check` para diagnóstico).
+- **Contratos**: a política é gravada em `CLAUDE.md`/`AGENTS.md` (bloco gerido
+  `oss:merge-policy`), para qualquer agente a seguir sem invocar a skill.
 
 ## Regras locais — qualquer projeto, sem depender do GitHub (hooks git)
 
@@ -108,8 +131,9 @@ pedido→procedimento e o checklist de fecho **sem invocar esta skill**. A skill
 necessária para instalar/renovar o contrato e para os comandos dos gates.
 
 - Conteúdo do contrato (template `assets/templates/CLAUDE.md.tpl`): as 8 regras
-  obrigatórias (incluindo nomes de ramificação e commits diretos proibidos), a
-  **regra de reentry** (`oss-enforce.sh` antes de tudo), o procedimento por pedido do
+  obrigatórias (incluindo nomes de ramificação e commits diretos proibidos), o bloco
+  **"merge, nunca rebase"** (`assets/templates/merge-policy.md`), a **regra de
+  reentry** (`oss-enforce.sh` antes de tudo), o procedimento por pedido do
   utilizador (commit, push, PR, versão, release, CI, dependências), o checklist
   "antes de fechar qualquer tarefa" e a semântica de erros.
 - Renovar o contrato quando os gates mudarem: `oss-scaffold.sh --force` (os restantes
@@ -150,13 +174,18 @@ necessária para instalar/renovar o contrato e para os comandos dos gates.
 12. **Reentry obrigatória**: toda a entrada num projeto — mesmo que já use a skill —
    começa por `oss-enforce.sh`, que verifica TUDO e coloca o que falta. Nunca assumir
    que está tudo lá; nunca pedir confirmação para esta verificação.
+13. **Merge, nunca rebase**: sincronize com `git merge origin/main`/`git pull` e
+   integre com merge (squash no cofre); `git rebase`, `git pull --rebase` e
+   rebase-merge são proibidos. `oss-enforce.sh` deteta e corrige a configuração
+   sozinho (`oss-merge-policy.sh`).
 
 ## Fluxo de trabalho (sempre nesta ordem)
 
 1. **Reentry (SEMPRE, 1.º passo)** — `bash scripts/oss-enforce.sh` → audita o estado
-   real e **aplica o que falta**: fundação local (via `oss-scaffold.sh`), rulesets no
-   GitHub (cria ausentes, reconcilia divergentes), push protection, nomes de branch.
-   Mesmo que o projeto já use a skill. `--dry-run` para ver o plano primeiro.
+   real e **aplica o que falta**: fundação local (via `oss-scaffold.sh`), política de
+   merge (merge, nunca rebase), rulesets no GitHub (cria ausentes, reconcilia
+   divergentes), push protection, nomes de branch. Mesmo que o projeto já use a skill.
+   `--dry-run` para ver o plano primeiro.
 2. **Diagnóstico** — `bash scripts/oss-doctor.sh` → tabela de estado da governança
    (ficheiros, hooks, workflows, rulesets por nome, nomes de branch, auth `gh`).
    Corrigir os FAIL antes de seguir.
@@ -172,9 +201,10 @@ necessária para instalar/renovar o contrato e para os comandos dos gates.
 
 | Ferramenta | Faz | Exemplo |
 |---|---|---|
-| `scripts/oss-enforce.sh` | **Reentry**: verifica TUDO e aplica o que falta — fundação local, regras locais (hooks), rulesets no GitHub (cria ausentes · reconcilia divergentes), push protection, auditoria de nomes de branch. Idempotente, sem perguntas | `bash scripts/oss-enforce.sh` (opções: `--dry-run`, `--local`) |
+| `scripts/oss-enforce.sh` | **Reentry**: verifica TUDO e aplica o que falta — fundação local, regras locais (hooks), **política de merge (rebase desativado)**, rulesets no GitHub (cria ausentes · reconcilia divergentes), push protection, auditoria de nomes de branch. Idempotente, sem perguntas | `bash scripts/oss-enforce.sh` (opções: `--dry-run`, `--local`) |
+| `scripts/oss-merge-policy.sh` | **Merge, nunca rebase**: deteta e corrige `pull.rebase`/`branch.*.rebase`, `allow_rebase_merge` e `"rebase"` nos `allowed_merge_methods`; grava a política em `CLAUDE.md`/`AGENTS.md` | `bash scripts/oss-merge-policy.sh apply` · `check` |
 | `scripts/oss-hooks.sh` | **Regras locais** em qualquer projeto: `pre-push` + `commit-msg` (nomes de branch, ramos protegidos, Conventional Commits) — por projeto ou `--global` via `core.hooksPath` | `bash scripts/oss-hooks.sh install --global` · `check` · `uninstall` |
-| `scripts/oss-doctor.sh` | Diagnóstico READ-ONLY da governança (ficheiros, hooks, workflows, permissions, actions pinnadas, rulesets por nome, nomes de branch, auth) | `bash scripts/oss-doctor.sh` |
+| `scripts/oss-doctor.sh` | Diagnóstico READ-ONLY da governança (ficheiros, hooks, **política de merge**, workflows, permissions, actions pinnadas, rulesets por nome, nomes de branch, auth) | `bash scripts/oss-doctor.sh` |
 | `scripts/oss-scaffold.sh` | Scaffolding idempotente dos ficheiros de governança a partir de `assets/` | `bash scripts/oss-scaffold.sh --target . --owner acme --license mit --holder "Acme"` |
 | `scripts/oss-gate.sh` | Gates por ação; exit 1 se algum bloquear | `bash scripts/oss-gate.sh push --branch feat/x` |
 | `scripts/oss-gate.sh branch` | Valida nome de ramificação contra `<tipo>/<slug>` | `bash scripts/oss-gate.sh branch feat/login` |
@@ -188,7 +218,7 @@ Comandos de plataforma (delegar operações genéricas à `github-agent-skill`):
 | Domínio | Comandos core |
 |---|---|
 | Repo/About | `gh repo create/edit/view` · `gh repo edit --add-topic` |
-| PR/merge | `gh pr create --title "feat(x): …" --base main` · `gh pr checks --watch` · `gh pr merge --squash --delete-branch` |
+| PR/merge | `gh pr create --title "feat(x): …" --base main` · `gh pr checks --watch` · `gh pr merge --squash --delete-branch` · `gh pr update-branch` (merge, nunca rebase) |
 | Versionamento | `git tag -a vX.Y.Z -m "…"` · `gh release create vX.Y.Z --verify-tag --notes-file CHANGELOG.md` |
 | Regras | `bash scripts/oss-enforce.sh` (aplica/reconcilia os 5 rulesets) · `gh api --method PUT /repos/{o}/{r}/rulesets/<id> --input …` · `gh ruleset list` · `gh ruleset check <ref>` |
 | Segredos | `echo "$TOKEN" \| gh secret set NPM_TOKEN --env production` (nunca em claro) |
@@ -216,8 +246,8 @@ inválida → reescrever com o formato; versão incoerente → recalcular com `o
 - `references/identidade-e-telemetria.md` — README, badges shields.io, About/topics.
 - `references/governanca-social.md` — CONTRIBUTING, CODEOWNERS, SECURITY, community files.
 - `references/commits-convencionais.md` — anatomia, tipos, BREAKING, husky v9 + commitlint.
-- `references/branching-e-fluxo.md` — GitHub Flow, trunk-based, squash merge,
-  hotfixes, convenção FECHADA de nomes de branch.
+- `references/branching-e-fluxo.md` — GitHub Flow, trunk-based, **merge (nunca
+  rebase)**, squash merge, hotfixes, convenção FECHADA de nomes de branch.
 - `references/releases-e-semver.md` — SemVer, semantic-release vs release-please vs git-cliff.
 - `references/rulesets-e-protecao.md` — GitHub Rulesets, JSON de governança, nomes de
   branch impostos no servidor (portátil: `creation`+`update`), mensagens de commit
@@ -229,8 +259,9 @@ inválida → reescrever com o formato; versão incoerente → recalcular com `o
 - `references/gh-cli-para-governanca.md` — superfície `gh`/`gh api` para governar.
 
 `assets/` traz os templates prontos (README, CONTRIBUTING, SECURITY, CODEOWNERS,
-workflows pinnados — incluindo `tests.yml`, `reusable-ci.yml`, `codeql.yml` e
-`dependency-review.yml` —, rulesets JSON, licenças) consumidos por `oss-scaffold.sh`.
+política de merge `merge-policy.md`, workflows pinnados — incluindo `tests.yml`,
+`reusable-ci.yml`, `codeql.yml` e `dependency-review.yml` —, rulesets JSON,
+licenças) consumidos por `oss-scaffold.sh`.
 
 ## Fontes oficiais
 

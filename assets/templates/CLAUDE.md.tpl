@@ -5,6 +5,8 @@
 > segue-as SEM precisar de invocar a skill. Os comandos abaixo vivem na instalação da
 > skill (`{{SKILL_ROOT}}`) e são suficientes para todo o ciclo de vida.
 
+{{MERGE_POLICY}}
+
 ## Regras obrigatórias em TODO o desenvolvimento
 
 1. **Nunca escrever diretamente em ramos protegidos** — o ramo predefinido
@@ -37,7 +39,8 @@
    (`bash {{SKILL_ROOT}}/scripts/oss-pin-actions.sh`), `permissions` mínimos e
    `timeout-minutes` em todos os jobs; o `context` do ruleset é o **nome do job**.
 8. **Nunca contornar um gate**: se `oss-gate.sh` bloquear, corrija a CAUSA e repita.
-   Nunca `--no-verify`, nunca force-push, nunca reescrever histórico partilhado.
+   Nunca `--no-verify`, nunca force-push, nunca rebase, nunca reescrever histórico
+   partilhado.
 
 ## Regra de reentry (vale para QUALQUER pedido, sempre)
 
@@ -50,8 +53,9 @@ bash {{SKILL_ROOT}}/scripts/oss-enforce.sh
 
 O `oss-enforce.sh` é idempotente e não-destrutivo: cria a fundação em falta
 (ficheiros, hooks), **cria** os rulesets ausentes e **reconcilia** os divergentes no
-GitHub, ativa o Push Protection e audita nomes de branch. Corre **sem pedir nada**,
-no início de qualquer tarefa de governança e antes de fechar qualquer trabalho.
+GitHub, ativa o Push Protection, **desativa qualquer rebase** (política de merge) e
+audita nomes de branch. Corre **sem pedir nada**, no início de qualquer tarefa de
+governança e antes de fechar qualquer trabalho.
 
 As regras também vivem **localmente** (sem GitHub): os hooks `pre-push` + `commit-msg`
 instalados por `bash {{SKILL_ROOT}}/scripts/oss-hooks.sh install` impõem nomes
@@ -65,7 +69,8 @@ Convencionais nesta máquina — qualquer projeto, qualquer remoto.
 | (sempre, 1.º passo) | `bash {{SKILL_ROOT}}/scripts/oss-enforce.sh` — reverifica tudo e aplica o que faltar |
 | "commita" / "faz commit" | `bash {{SKILL_ROOT}}/scripts/oss-gate.sh commit-msg "<msg>"` → `git commit` (o hook `commit-msg` revalida) |
 | "push" / "sobe" | branch ≠ ramos protegidos e nome `<tipo>/<slug>` → `oss-gate.sh push` → `git push -u origin <branch>` |
-| "abre PR" / "faz merge" | título Convencional = mensagem do squash → `gh pr create --base {{DEFAULT_BRANCH}}` → `gh pr checks --watch` → `gh pr merge --squash --delete-branch` |
+| "atualiza/sincroniza a branch" | `git fetch origin && git merge origin/main` (ou `git pull`) — **nunca rebase** |
+| "abre PR" / "faz merge" | título Convencional = mensagem do squash → `gh pr create --base {{DEFAULT_BRANCH}}` → `gh pr checks --watch` → `gh pr merge --squash --delete-branch` (**squash é merge; rebase nunca**) |
 | "muda/sobe a versão" | `oss-version.py next` → aplicar o valor nos manifestos → `oss-changelog.py --write` |
 | "faz release" / "publica" | `oss-gate.sh release --version X.Y.Z` → commit de release → `git tag -a vX.Y.Z` → `gh release create vX.Y.Z --verify-tag --notes-file` → publicação via CI com secrets em Environment |
 | "muda CI/workflows" | editar `.github/workflows/` → `oss-pin-actions.sh` → confirmar que o nome do job bate certo com o `context` do ruleset |
@@ -86,7 +91,8 @@ Convencionais nesta máquina — qualquer projeto, qualquer remoto.
 ruleset: PR obrigatório, squash-only, status checks strict, histórico linear, sem
 force-push, sem delete — **commits diretos são recusados pelo GitHub**. Os nomes de
 branch seguem `<tipo>/<slug>` — **o GitHub rejeita os restantes** — e as mensagens
-Convencionais são impostas também no servidor (status check `build`). Tags `v*` são
+Convencionais são impostas também no servidor (status check `build`). O **rebase está
+desativado** (sync por merge; PR por squash merge; rebase-merge fora). Tags `v*` são
 imutáveis. Releases nunca retrocedem: reverter um `BREAKING CHANGE` publicado exige
 um novo MAJOR.
 

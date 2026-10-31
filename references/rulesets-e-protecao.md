@@ -27,7 +27,9 @@ checks obrigatórios. Nenhum ruleset consegue *alargar* o que outro apertou.
    quem é dono do código (CODEOWNERS) aprova o que é seu. **É esta regra que proíbe
    commits diretos**: sem PR, o push é recusado pelo GitHub.
 2. **Histórico linear / squash** — `allowed_merge_methods: ["squash"]` +
-   `required_linear_history`; merge commits ficam proibidos.
+   `required_linear_history`; merge commits ficam proibidos. **Rebase também fica
+   fora**: `allow_rebase_merge=false` no repositório e nenhum `"rebase"` em
+   `allowed_merge_methods` — a skill corrige ambos (`oss-merge-policy.sh`).
 3. **Status checks obrigatórios** — `required_status_checks` com
    `strict_required_status_checks_policy: true` (a branch tem de estar atualizada).
 4. **Sem force push** — `non_fast_forward` bloqueia reescrita de história.
@@ -211,7 +213,9 @@ Notas sobre o envelope (validadas contra a API real):
 
 O caminho normal é o **`oss-enforce.sh`**: ele audita o estado real, **cria** os
 rulesets ausentes e **reconcilia** (PUT) os divergentes do JSON versionado no
-projeto — corre a cada entrada no projeto, mesmo que ele já use a skill:
+projeto — corre a cada entrada no projeto, mesmo que ele já use a skill. O mesmo
+comando aplica a **política de merge**: desliga `allow_rebase_merge` e remove
+`"rebase"` de `allowed_merge_methods` antes de reconciliar os rulesets.
 
 ```bash
 bash scripts/oss-enforce.sh            # verifica tudo e aplica o que falta
@@ -277,6 +281,7 @@ normal. Nunca `bypass_actors` para humanos, nem aqui.
 | Regra criada mas sem efeito | chave `params` usada em vez de `parameters` (aceite e ignorada) | recriar com `parameters` e confirmar com `GET /rulesets/{id}` |
 | `409` / "already exists" | ruleset com o mesmo nome ou regra duplicada | atualizar com `PUT` no `id` em vez de `POST` |
 | Regra não bloqueia | ruleset sobreposto em `disabled`/`evaluate` | `gh ruleset list` e subir tudo para `active` |
+| PR só oferece rebase / repositório com rebase ligado | `allow_rebase_merge=true` ou `"rebase"` em `allowed_merge_methods` | `bash scripts/oss-merge-policy.sh apply` (ou `oss-enforce.sh`) — desliga rebase e mantém merge |
 | Bot de release bloqueado | `bypass_actors` sem o `Integration` certo | adicionar `actor_type: Integration` com o `actor_id` da app |
 | Push de branch recusado (`ref updates cannot be rejected...`) | regras `creation`/`update` do ruleset de nomes e o nome fora de `<tipo>/<slug>` | renomear: `git branch -m <tipo>/<slug>` e voltar a dar push |
 | Commit recusado no merge/push | mensagem fora de Conventional Commits (status check `build` bloqueia; em Enterprise, a regra `commit_message_pattern`) | reescrever a mensagem (`git commit --amend`) ou titule o PR Convencionalmente (squash) |

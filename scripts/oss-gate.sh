@@ -7,7 +7,7 @@
 #   branch     [nome]                nome de ramificação segundo a convenção <tipo>/<slug>
 #   push       [--branch B]          sem push a ramos protegidos, nome convencional, sem segredos
 #   pr         [--title T] [--base B] título convencional, ramificação efémera, base main
-#   merge      [--title T]           squash merge: mensagem convencional, sem merge commits
+#   merge      [--title T]           merge (squash no cofre): mensagem convencional, nunca rebase
 #   release    [--version X.Y.Z]     SemVer coerente com os commits, changelog, tag livre
 #   publish    [--version X.Y.Z]     tudo do release + manifesto coerente + confirmação --yes
 #
@@ -189,7 +189,7 @@ gate_push() {
     elif [ "$bad_msgs" -eq 0 ]; then
       ok "$total commit(s) com mensagens convencionais"
     else
-      info "Solução: reescreva as mensagens (git rebase -i) ou use o título convencional no squash do PR"
+      info "Solução: git commit --amend (último commit) ou git reset --soft <base> + recommit; use o título convencional no squash do PR — nunca rebase"
     fi
     scan_range "$range" "commits a enviar"
   else
@@ -233,13 +233,13 @@ gate_merge() {
       *) die "argumento desconhecido: $1" "uso: oss-gate.sh merge [--title T]" 2 ;;
     esac
   done
-  echo "Gate 3 · Merge — squash merge e histórico linear"
+  echo "Gate 3 · Merge — merge (squash) e histórico linear"
   if [ -n "$title" ]; then
     validate_message "$title" || true
   else
     warn "sem título de squash; exija um título Convencional (gh pr merge --squash)"
   fi
-  info "política: SOMENTE squash merge + delete-branch (gh pr merge --squash --delete-branch)"
+  info "política: SOMENTE merge + delete-branch — squash no cofre, merge commits onde o ruleset permitir; rebase NUNCA (gh pr merge --squash --delete-branch)"
   info "confirme que os status checks estão verdes: gh pr checks --watch"
 }
 
@@ -280,7 +280,7 @@ gate_release() {
          info "Solução: nada a lançar, ou use --bump com justificação do utilizador"; }
   [ "$nonconv" -eq 0 ] && ok "todos os commits seguem Conventional Commits" \
     || { bad "$nonconv commit(s) fora do padrão contaminam o changelog e o SemVer"; \
-         info "Solução: git rebase -i para reescrever, ou corrija as mensagens"; }
+         info "Solução: corrija as mensagens com git commit --amend ou reset --soft + recommit — nunca rebase"; }
 
   if [ -n "$want" ]; then
     [ "v${want#v}" = "v$next" ] && ok "versão pedida ($want) coerente com os commits" \

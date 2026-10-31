@@ -28,6 +28,7 @@ Escopos mínimos para governar: `repo`, `administration:write` (rulesets),
 | Secrets (env) | `echo "$VALOR" \| gh secret set NPM_TOKEN --env production` |
 | Variables | `gh variable set RELEASE_CHANNEL --body "stable"` |
 | Rulesets | `bash scripts/oss-enforce.sh` (cria/reconcilia os 5 rulesets) · `gh api --method POST /repos/OWNER/REPO/rulesets --input .github/rulesets/regras-main.json` · `gh api --method PUT /repos/OWNER/REPO/rulesets/<id> --input …` |
+| Merge methods (sem rebase) | `gh api --method PATCH /repos/OWNER/REPO -F allow_rebase_merge=false -F allow_merge_commit=true` · `bash scripts/oss-merge-policy.sh apply` |
 | Labels | `gh label create "breaking" --color B60205 --description "Mudança incompatível"` |
 | Release | `gh release create v1.4.0 --verify-tag --notes-file CHANGELOG.md` |
 | Workflows | `gh workflow list` · `gh workflow enable ci.yml` · `gh workflow disable old.yml` |
@@ -50,14 +51,16 @@ gh pr merge --squash --delete-branch
 Complementos obrigatórios:
 
 ```bash
-gh pr update-branch                        # PR desatualizado, sem conflitos
+gh pr update-branch                        # PR desatualizado: merge, nunca rebase
 gh pr view <n> --json state,mergeable,statusCheckRollup,reviewDecision
 bash scripts/oss-gate.sh branch            # valida o nome da ramificação (<tipo>/<slug>)
 bash scripts/oss-gate.sh pr --title "..."  # valida o título como commit convencional
 ```
 
 O título do PR é a mensagem final do squash merge — tem de seguir a Conventional
-Commits (ver `commits-convencionais.md`).
+Commits (ver `commits-convencionais.md`). A sincronização é sempre **merge**:
+`git merge origin/main` (ou `git pull`); `git rebase`/`git pull --rebase` e
+rebase-merge são proibidos — `oss-enforce.sh` desliga o rebase no repositório.
 
 ## Inspeção e auditoria
 

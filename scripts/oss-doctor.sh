@@ -107,6 +107,20 @@ else
   warn "commitlint em falta (em repos Node); alternativa: oss-gate.sh commit-msg no hook"
 fi
 
+head_ "Política de merge (merge, nunca rebase)"
+if [ -f "$SKILL_DIR/scripts/oss-merge-policy.sh" ]; then
+  MERGE_CHECK=(check --target "$ROOT")
+  [ "$LOCAL_ONLY" -eq 1 ] && MERGE_CHECK+=(--local)
+  if bash "$SKILL_DIR/scripts/oss-merge-policy.sh" "${MERGE_CHECK[@]}"; then
+    PASS=$((PASS+1))
+  else
+    FAIL=$((FAIL+1))
+    info "Solução: bash $SKILL_DIR/scripts/oss-merge-policy.sh apply --target \"$ROOT\""
+  fi
+else
+  bad "oss-merge-policy.sh em falta — Solução: reinstale a skill opensource-project"
+fi
+
 head_ "Convenção de nomes de ramificação (Gate 2)"
 if type oss_branch_ok >/dev/null 2>&1; then
   TOTAL_B=0; VIOL_B=0

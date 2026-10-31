@@ -60,6 +60,10 @@ command -v python3 >/dev/null 2>&1 || {
   printf 'Erro: assets/ da skill incompleto (%s) — Solução: reinstale a skill opensource-project\n' "$ASSETS" >&2
   exit 5
 }
+[ -e "$ASSETS/templates/merge-policy.md" ] || {
+  printf 'Erro: assets/templates/merge-policy.md em falta — Solução: reinstale a skill opensource-project\n' >&2
+  exit 5
+}
 
 [ -d "$TARGET" ] || mkdir -p "$TARGET"
 TARGET="$(cd "$TARGET" && pwd)"
@@ -97,6 +101,9 @@ src, dst = sys.argv[1], sys.argv[2]
 keys = ["PROJECT_NAME", "DESCRIPTION", "OWNER", "REPO", "LICENSE", "YEAR",
         "HOLDER", "DEFAULT_BRANCH", "CONTACT", "SKILL_ROOT"]
 text = open(src, encoding="utf-8").read()
+merge_policy = os.path.join(os.path.dirname(src), "merge-policy.md")
+if "{{MERGE_POLICY}}" in text:
+    text = text.replace("{{MERGE_POLICY}}", open(merge_policy, encoding="utf-8").read().strip())
 for k in keys:
     text = text.replace("{{" + k + "}}", os.environ.get("OSS_" + k, ""))
 open(dst, "w", encoding="utf-8").write(text)
