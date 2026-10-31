@@ -103,8 +103,8 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `buil
 `lower-case`.
 
 > The `commit-msg` git hook (husky + commitlint) **rejects invalid messages at commit time**. If
-> your commit was refused, fix the message with `git commit --amend` (or `git rebase -i` for older
-> commits) instead of bypassing the hook.
+> your commit was refused, fix the message with `git commit --amend` (or `git reset --soft` plus a
+> new commit for older unpublished commits) instead of bypassing the hook. **Never rebase.**
 
 ## Local quality gates
 
@@ -135,9 +135,12 @@ fails without the fix.
    - Owners of the changed paths must review (code owner review is required).
    - Stale approvals are dismissed automatically when new commits are pushed.
    - All review threads must be resolved and all required status checks must pass.
-6. **Squash and merge only.** Maintainers merge with the squash strategy and delete the source
-   branch afterwards; the pull request title becomes the permanent commit message. Do not merge with
-   merge commits or rebase-merge.
+6. **Merge, never rebase.** Update your branch by merging the base branch
+   (`git fetch origin && git merge origin/main`); never `git rebase` or
+   `git pull --rebase`. Maintainers integrate the PR with the repository's merge
+   method (squash on protected branches, merge commit where the ruleset allows it)
+   and delete the source branch; the pull request title becomes the permanent commit
+   message. Rebase-merge is disabled repository-wide.
 
 ## Reporting bugs
 

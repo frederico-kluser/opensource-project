@@ -19,7 +19,11 @@
 #   1. Fundação local  — LICENSE, README, CONTRIBUTING, CODEOWNERS, SECURITY,
 #      templates de issue/PR, CHANGELOG, contratos CLAUDE.md/AGENTS.md e hook
 #      commit-msg (via oss-scaffold.sh: cria o que falta, nunca sobrescreve).
-#   2. Rulesets GitHub — os 5 rulesets da governança. AUSENTES → criados (POST);
+#   2. Política de merge — MERGE, nunca rebase: pull.rebase/branch.*.rebase → false,
+#      allow_rebase_merge=false (merge commits em vez de rebase), "rebase" fora dos
+#      allowed_merge_methods e a política gravada em CLAUDE.md/AGENTS.md
+#      (via oss-merge-policy.sh: deteta e corrige, sem perguntar).
+#   3. Rulesets GitHub — os 5 rulesets da governança. AUSENTES → criados (POST);
 #      DIVERGENTES do JSON versionado no projeto → reconciliados (PUT):
 #        · "Governança Principal Restrita"      — sem commit direto em main/develop/
 #          release: PR obrigatório, squash-only, sem force-push, sem delete,
@@ -33,8 +37,8 @@
 #          servidor por regra de metadata (`commit_message_pattern`) — GitHub
 #          Enterprise; sem Enterprise, o equivalente portátil está ativo: hook
 #          commit-msg + status check obrigatório `build` (CI valida mensagens).
-#   3. Push Protection — ativa a proteção de segredos se estiver desligada.
-#   4. Auditoria de nomes — lista branches existentes fora da convenção (a regra
+#   4. Push Protection — ativa a proteção de segredos se estiver desligada.
+#   5. Auditoria de nomes — lista branches existentes fora da convenção (a regra
 #      nova impede atualizá-las; renomear ou apagar é a cura).
 #
 # Exit codes: 0 tudo em vigor · 1 há lacunas por aplicar · 2 uso inválido ·
@@ -65,7 +69,7 @@ while [ $# -gt 0 ]; do
     --repo)   need_val "$1" "$#"; REPO="$2"; shift 2 ;;
     --local)  LOCAL=1; shift ;;
     --dry-run) DRY=1; shift ;;
-    --help|-h) sed -n '2,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --help|-h) sed -n '2,45p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "argumento desconhecido: $1" "uso: oss-enforce.sh [--target DIR] [--owner O] [--repo R] [--local] [--dry-run]" 2 ;;
   esac
 done
@@ -123,7 +127,20 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Rulesets GitHub — criar ausentes, reconciliar divergentes
+# 2. Política de merge — merge, nunca rebase (corrige git/GitHub/rulesets/contratos)
+# ---------------------------------------------------------------------------
+head_ "2 · Política de merge (merge, nunca rebase)"
+MERGE_ARGS=(apply --target "$TARGET")
+[ "$LOCAL" -eq 1 ] && MERGE_ARGS+=(--local)
+[ "$DRY" -eq 1 ] && MERGE_ARGS+=(--dry-run)
+if bash "$SKILL_DIR/scripts/oss-merge-policy.sh" "${MERGE_ARGS[@]}"; then
+  ok "política de merge verificada (rebase desativado)"
+else
+  bad "política de merge incompleta — Solução: bash $SKILL_DIR/scripts/oss-merge-policy.sh apply --target $TARGET"
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Rulesets GitHub — criar ausentes, reconciliar divergentes
 # ---------------------------------------------------------------------------
 RULESETS_PROJ="$TARGET/.github/rulesets"
 RULESETS_ASSETS="$SKILL_DIR/assets/rulesets"
@@ -151,7 +168,7 @@ PY
 }
 
 apply_rulesets() {
-  head_ "2 · Rulesets do GitHub (nome de branch · commits diretos · tags)"
+  head_ "3 · Rulesets do GitHub (nome de branch · commits diretos · tags)"
   local list_json f src name rid cur
   if [ "$LOCAL" -eq 1 ]; then
     info "modo --local: aplicação de rulesets omitida"; return 0
@@ -242,10 +259,10 @@ for r in data:
 }
 
 # ---------------------------------------------------------------------------
-# 3. Push Protection — ativar se estiver desligada
+# 4. Push Protection — ativar se estiver desligada
 # ---------------------------------------------------------------------------
 enable_push_protection() {
-  head_ "3 · Secret Scanning Push Protection"
+  head_ "4 · Secret Scanning Push Protection"
   if [ "$LOCAL" -eq 1 ]; then
     info "modo --local: verificação omitida"; return 0
   fi
@@ -268,10 +285,10 @@ enable_push_protection() {
 }
 
 # ---------------------------------------------------------------------------
-# 4. Auditoria de nomes de ramificação (regra nova impede atualizar os violadores)
+# 5. Auditoria de nomes de ramificação (regra nova impede atualizar os violadores)
 # ---------------------------------------------------------------------------
 audit_branch_names() {
-  head_ "4 · Auditoria de nomes de ramificação"
+  head_ "5 · Auditoria de nomes de ramificação"
   local b viol=0
   while IFS= read -r b; do
     [ -z "$b" ] && continue

@@ -24,6 +24,10 @@ dos projetos que governa, exige de si próprio.
 6. **Assets** — templates com placeholders `{{OWNER}}`, `{{REPO}}`, etc. (ver
    `assets/README.md`); JSON/YAML sempre parseáveis; actions sempre em formato
    `owner/repo@<PIN_SHA> # vX.Y.Z`.
+7. **Merge, nunca rebase** — sincronize a ramificação com `git merge origin/main`
+   (ou `git pull`, que faz merge); o PR integra por merge (squash no cofre).
+   `git rebase`, `git pull --rebase` e rebase-merge são proibidos; o
+   `oss-enforce.sh` deteta e corrige a configuração.
 
 ## Estrutura
 
